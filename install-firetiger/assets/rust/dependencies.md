@@ -4,11 +4,11 @@
 
 ```toml
 [dependencies]
-opentelemetry = "0.22"
-opentelemetry_sdk = { version = "0.22", features = ["rt-tokio"] }
-opentelemetry-otlp = { version = "0.15", features = ["http-proto", "reqwest-client"] }
+opentelemetry = "0.28"
+opentelemetry_sdk = { version = "0.28", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.28", features = ["http-proto", "reqwest-client"] }
 tracing = "0.1"
-tracing-opentelemetry = "0.23"
+tracing-opentelemetry = "0.28"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 ```
 

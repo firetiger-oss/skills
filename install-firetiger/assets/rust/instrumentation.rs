@@ -1,6 +1,6 @@
-use opentelemetry::trace::TracerProvider;
-use opentelemetry_otlp::WithExportConfig;
-use opentelemetry_sdk::{runtime, trace as sdktrace, Resource};
+use opentelemetry::global;
+use opentelemetry_otlp::{Protocol, SpanExporter, WithExportConfig, WithHttpConfig};
+use opentelemetry_sdk::{trace::SdkTracerProvider, Resource};
 use std::collections::HashMap;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -18,20 +18,19 @@ pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
     let mut headers = HashMap::new();
     headers.insert("Authorization".to_string(), auth_header);
 
-    let exporter = opentelemetry_otlp::new_exporter()
-        .http()
+    let exporter = SpanExporter::builder()
+        .with_http()
+        .with_protocol(Protocol::HttpBinary)
         .with_endpoint(format!("{}/v1/traces", endpoint))
-        .with_headers(headers);
+        .with_headers(headers)
+        .build()?;
 
-    let provider = opentelemetry_otlp::new_pipeline()
-        .tracing()
-        .with_exporter(exporter)
-        .with_trace_config(
-            sdktrace::Config::default().with_resource(Resource::new(vec![
-                opentelemetry::KeyValue::new("service.name", service_name),
-            ])),
-        )
-        .install_batch(runtime::Tokio)?;
+    let provider = SdkTracerProvider::builder()
+        .with_batch_exporter(exporter)
+        .with_resource(Resource::builder().with_service_name(service_name).build())
+        .build();
+
+    global::set_tracer_provider(provider.clone());
 
     let tracer = provider.tracer("app");
     let telemetry_layer = tracing_opentelemetry::layer().with_tracer(tracer);
