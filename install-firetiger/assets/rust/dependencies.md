@@ -35,7 +35,7 @@ For automatic HTTP server instrumentation with Axum:
 
 ```toml
 [dependencies]
-tower-http = { version = "0.5", features = ["trace"] }
+tower-http = { version = "0.6", features = ["trace"] }
 ```
 
 ```rust
