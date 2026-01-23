@@ -5,7 +5,7 @@ import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { BatchLogRecordProcessor } from '@opentelemetry/sdk-logs';
-import { Resource } from '@opentelemetry/resources';
+import { resourceFromAttributes } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 
 const OTEL_ENDPOINT = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || '{{INGEST_URL}}';
@@ -13,7 +13,7 @@ const OTEL_AUTH = process.env.OTEL_EXPORTER_OTLP_HEADERS?.match(/Basic\s+(.+)/)?
   ?? '{{AUTH_HEADER}}';
 const OTEL_HEADERS = { Authorization: `Basic ${OTEL_AUTH}` };
 
-const resource = new Resource({
+const resource = resourceFromAttributes({
   [ATTR_SERVICE_NAME]: process.env.OTEL_SERVICE_NAME || '{{SERVICE_NAME}}',
 });
 
