@@ -1,0 +1,69 @@
+{
+  "skill_name": "plan-change-control",
+  "evals": [
+    {
+      "id": 1,
+      "name": "low-risk-bugfix-single-env",
+      "skills": ["plan-change-control"],
+      "query": "I'm about to merge PR #4521 — it fixes a typo in the request-validation error message returned by /api/v1/widgets when the body is malformed. The change is one file, two lines. We deploy via GitHub Actions to prod only (we don't have a staging env for this service). Add a monitoring plan to my notes for this deploy.",
+      "files": [],
+      "expected_behavior": [
+        "Identifies the change as low-risk and states a one-sentence reason (text-only fix to error-message body, no behaviour change)",
+        "Picks the +10m, +30m checkpoint schedule (low-tier default)",
+        "Picks at least one indicator per applicable golden signal on the affected service (likely only error-rate and traffic, since the change is in error-handling itself)",
+        "Renders a monitoring plan section with risk tier, intended effect, blast radius, rollback hint, environments block (just prod), indicators table with baselines, and checkpoints",
+        "Includes the activation handoff line pointing at /execute-change-control"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "medium-risk-multi-env",
+      "skills": ["plan-change-control"],
+      "query": "Drafting a plan for PR #5012 — adds a new POST /api/v1/orders/preview endpoint that previews order pricing without committing. Backed by Postgres reads only, no writes. Will deploy to staging then prod via our usual GitHub Actions flow. We use Datadog for metrics and logs. Plan how I should monitor this rollout.",
+      "files": [],
+      "expected_behavior": [
+        "Identifies the change as medium-risk (new endpoint, read-only, no infra/data writes) with one-sentence reasoning",
+        "Picks the +10m, +30m, +1h, +2h checkpoint schedule (medium-tier default)",
+        "Enumerates both staging and prod as target environments",
+        "Picks indicators across all four golden signals on the orders service (latency p99, traffic / RPS, error ratio, saturation)",
+        "Adds an intended-effect indicator (e.g. orders-preview RPS rising as the endpoint is exercised)",
+        "Uses Datadog Server:tool format for indicator sources (Datadog:query_metrics, not mcp__datadog__query_metrics)",
+        "Captures a 24h baseline placeholder per env for each indicator",
+        "Per-env deploy-detection blocks for staging and prod with concrete gh CLI commands",
+        "Includes rollback hint (specific to reverting this PR via the deploy workflow)"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "high-risk-db-migration-with-multi-region",
+      "skills": ["plan-change-control"],
+      "query": "PR #6128 adds a NOT NULL column 'tier' to the users table, with a backfill migration that runs in batches of 10k rows. We deploy via ArgoCD ApplicationSet that fans out to 4 regions: us-east-1, us-west-2, eu-west-1, ap-northeast-1. Telemetry is split between Honeycomb (traces) and Prometheus (infra metrics). Walk me through the monitoring plan for this rollout.",
+      "files": [],
+      "expected_behavior": [
+        "Identifies the change as high-risk with reasoning citing the schema change + backfill on a presumably large table",
+        "Picks the full +10m, +30m, +1h, +2h, +24h, +72h checkpoint schedule (high-tier default)",
+        "Enumerates all four regions as separate environments with their own deploy-detection blocks",
+        "Asks the user (or confirms via env probing) which telemetry tool is canonical for which signal — Honeycomb for trace-derived latency / errors, Prometheus for DB CPU / replica lag / connection pool saturation",
+        "Picks indicators that cover the database side specifically: replica lag, query latency, connection pool saturation, write throughput",
+        "Includes intended-effect indicators (the migration's progress: backfill_rows_remaining decreasing)",
+        "Uses ArgoCD recipe for per-region deploy detection with ancestry awareness",
+        "Captures per-region 24h baselines (per-env scope, not shared) for replica lag",
+        "Rollback hint specific to this change (revert the migration + redeploy, with explicit caution about the backfill being destructive)",
+        "Asks at least one clarifying question (e.g. what's the rollback procedure if the backfill is partially complete) before finalising"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "vague-prompt-asks-for-clarification",
+      "skills": ["plan-change-control"],
+      "query": "we're shipping something tomorrow, need a monitoring plan",
+      "files": [],
+      "expected_behavior": [
+        "Recognises that the prompt is too vague to plan against",
+        "Asks for the diff or PR url before proceeding",
+        "Asks about target environments",
+        "Does NOT fabricate a generic plan with placeholder values"
+      ]
+    }
+  ]
+}
