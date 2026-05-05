@@ -21,10 +21,14 @@ done
 cat <<'EOF'
 The companion skill plan-rollout is not installed.
 
-monitor-rollout reads a monitoring plan produced by plan-rollout.
-Install it with:
+monitor-rollout reads a monitoring plan produced by plan-rollout. Easiest
+fix — install the whole rollout family with one command:
 
-  npx skills add firetiger-oss/skills@plan-rollout
+  npx skills add firetiger-oss/skills --all
+
+Or install only the planner:
+
+  npx skills add firetiger-oss/skills --skill plan-rollout
 
 Then re-run plan-rollout on the diff first, save the resulting plan to a
 file, and re-invoke /monitor-rollout <path-to-plan> against that file.

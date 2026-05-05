@@ -59,8 +59,17 @@ fi
 echo "The rollout umbrella needs the following sub-skill(s), which are not installed:"
 echo
 for skill in "${missing[@]}"; do
-    echo "  npx skills add firetiger-oss/skills@$skill"
+    echo "  - $skill"
 done
 echo
-echo "Install the missing skill(s) and re-invoke rollout."
+echo "Easiest fix — install the whole rollout family with one command:"
+echo
+echo "  npx skills add firetiger-oss/skills --all"
+echo
+echo "Or install only the missing piece:"
+for skill in "${missing[@]}"; do
+    echo "  npx skills add firetiger-oss/skills --skill $skill"
+done
+echo
+echo "Then re-invoke rollout."
 exit 1

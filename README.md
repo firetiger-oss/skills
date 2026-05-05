@@ -21,16 +21,27 @@ Keywords: rollout, deploy monitor, deploy monitoring, post-deploy validation, ch
 
 ## Install
 
-This repo publishes three skills to [skills.sh](https://skills.sh).
+One command installs all three skills:
 
 ```sh
-# Recommended: install the umbrella skill, which dispatches to the others.
-npx skills add firetiger-oss/skills@rollout
-npx skills add firetiger-oss/skills@plan-rollout
-npx skills add firetiger-oss/skills@monitor-rollout
+npx skills add firetiger-oss/skills --all
 ```
 
-The umbrella `rollout` skill checks for the presence of the two specialised skills at runtime and prints the install command for whichever is missing. Power users may install the specialised skills directly without the umbrella.
+That's it. The umbrella `rollout` skill becomes available as `/rollout` and routes to the right sub-skill based on phase; the specialised skills (`/plan-rollout`, `/monitor-rollout`) work directly too.
+
+### Variants
+
+```sh
+# Global install (across all your projects)
+npx skills add firetiger-oss/skills --all -g
+
+# Specific agents only (e.g. just Claude Code and Cursor)
+npx skills add firetiger-oss/skills --all --agent claude-code cursor
+
+# Just one phase (power users who only want planning, or only execution)
+npx skills add firetiger-oss/skills --skill plan-rollout
+npx skills add firetiger-oss/skills --skill monitor-rollout
+```
 
 ### Per-platform install paths
 
