@@ -50,7 +50,7 @@ Match: `kubectl rollout returned successfully && all pods running new image tag`
 After the change merges and the deploy is triggered, run:
 
 ```
-/execute-change-control examples/high-risk-infra-change.md
+/monitor-rollout examples/high-risk-infra-change.md
 ```
 
 in this same session to monitor it.

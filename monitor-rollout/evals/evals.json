@@ -1,0 +1,68 @@
+{
+  "skill_name": "monitor-rollout",
+  "evals": [
+    {
+      "id": 1,
+      "name": "single-env-clean-deploy",
+      "skills": ["monitor-rollout"],
+      "query": "I just merged PR #4521. The monitoring plan is at docs/plans/4521-monitoring.md. Run rollout execution against the deploy.",
+      "files": ["docs/plans/4521-monitoring.md"],
+      "expected_behavior": [
+        "Reads the plan file from the path provided",
+        "Identifies the single environment listed in the plan",
+        "Begins polling the deploy system at 30-second cadence using the exact command from the plan's Deploy detection block",
+        "Emits a DEPLOY_DETECTED status block once the poll matches",
+        "Calls ScheduleWakeup for the next checkpoint offset (e.g. +10m) and yields, rather than busy-looping",
+        "On wake-up, runs each indicator query and emits a CHECK_COMPLETE block with the per-indicator verdicts",
+        "After the final checkpoint passes clean, emits the COMPLETED block including the explicit 'monitoring window closed' line"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "multi-env-issue-in-staging",
+      "skills": ["monitor-rollout"],
+      "query": "Run /monitor-rollout on docs/plans/cache-rollout.md — staging deployed 5 minutes ago, prod is still in approval.",
+      "files": ["docs/plans/cache-rollout.md"],
+      "expected_behavior": [
+        "Reads the plan and identifies both staging and prod as target envs",
+        "Records staging's deploy_time from the user's note (or polls and confirms it)",
+        "Continues polling prod (still in approval = not deployed)",
+        "At staging's +10m checkpoint, runs indicators with GROUP BY env (or per-env queries) and applies the four-check evidence-discipline gate",
+        "Detects a regression in staging that passes all four checks (assume the eval injects an error-rate spike well above threshold with prior-day evidence ruling out periodic patterns)",
+        "Emits an ISSUE_DETECTED status block that includes the plan's rollback hint copied verbatim",
+        "Calls EnterPlanMode with a seed plan derived from references/plan-mode-handoff.md",
+        "Notes prod as 'still polling for deploy' or 'monitoring deferred' in the report rather than continuing to monitor it during plan-mode"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "evidence-discipline-rejects-false-positive",
+      "skills": ["monitor-rollout"],
+      "query": "Run the executor on the search-svc plan. Deploy went out at 8:50 PT this morning. Telemetry is via Datadog.",
+      "files": ["docs/plans/search-svc.md"],
+      "expected_behavior": [
+        "At the +30m checkpoint, the search service's p99 latency reads 460ms (above the 280ms baseline)",
+        "Applies same-time-of-day comparison: prior-day at the same hour reads 470ms and 485ms",
+        "Concludes the elevated latency is part of the daily peak-hour pattern, not a regression",
+        "Marks the indicator as 'inconclusive' or 'unchanged' rather than 'regressed'",
+        "Includes the analytical reasoning in the CHECK_COMPLETE block's Notes column ('reading falls within prior-day range; routine peak-hour pattern')",
+        "Continues monitoring rather than handing off to plan mode"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "telemetry-unreachable-graceful-degradation",
+      "skills": ["monitor-rollout"],
+      "query": "Run /monitor-rollout on docs/plans/api-v2.md. The Datadog API has been having issues today.",
+      "files": ["docs/plans/api-v2.md"],
+      "expected_behavior": [
+        "At a checkpoint, attempts each indicator's Datadog query",
+        "When a query fails, retries once after ~10 seconds",
+        "Marks indicators that fail twice as INCONCLUSIVE with the failing query in the Notes column",
+        "Does NOT silently mark them as 'unchanged'",
+        "Continues with the rest of the indicators and other envs",
+        "If every indicator on every env fails for two consecutive checkpoints, escalates to FATAL_ERROR rather than continuing to emit empty CHECK_COMPLETE blocks"
+      ]
+    }
+  ]
+}

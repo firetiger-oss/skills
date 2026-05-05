@@ -36,7 +36,7 @@ Match: `status==completed && conclusion==success && headSha==<merge-sha>`
 After the change merges and the deploy is triggered, run:
 
 ```
-/execute-change-control examples/low-risk-bugfix.md
+/monitor-rollout examples/low-risk-bugfix.md
 ```
 
 in this same session to monitor it.

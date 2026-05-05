@@ -46,7 +46,7 @@ Match: `status==completed && conclusion==success`
 After the change merges and the deploy is triggered, run:
 
 ```
-/execute-change-control examples/medium-risk-api-change.md
+/monitor-rollout examples/medium-risk-api-change.md
 ```
 
 in this same session to monitor it.

@@ -67,7 +67,7 @@ Most indicators are `shared` (same query, breakdowns by region). Replica-lag is 
 After the change merges and the ArgoCD applications begin syncing, run:
 
 ```
-/execute-change-control examples/multi-region-rollout.md
+/monitor-rollout examples/multi-region-rollout.md
 ```
 
 in this same session to monitor it. The executor will poll all four regions independently and emit per-region rows in each `CHECK_COMPLETE` block.

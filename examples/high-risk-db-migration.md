@@ -48,7 +48,7 @@ Match: `status==completed && conclusion==success`
 After the change merges and the deploy is triggered, run:
 
 ```
-/execute-change-control examples/high-risk-db-migration.md
+/monitor-rollout examples/high-risk-db-migration.md
 ```
 
 in this same session to monitor it.
