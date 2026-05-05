@@ -22,7 +22,7 @@ Keywords: rollout, deploy monitor, deploy monitoring, post-deploy validation, ch
 ## Install
 
 ```sh
-npx skills add firetiger-oss/skills --all
+npx skills add firetiger-oss/skills --all --global
 ```
 
 That's it. `/rollout` becomes available and routes to the right sub-skill based on phase; `/plan-rollout` and `/monitor-rollout` work directly too.
