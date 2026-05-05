@@ -37,12 +37,9 @@ Per-deploy-system recipes:
 
 ## Workflow
 
-Copy this checklist into the response and tick items off as work progresses. Marker conventions: `[x]` done · `**[~] N. ... ← in progress**` for the active step (bolded with the `← in progress` suffix) · `**[!] N. ... ← blocked: <reason>**` for a blocked step · `[ ]` pending. The bracket markers carry the state; bold makes the active step pop.
+Copy this checklist into the response and tick items off as work progresses:
 
-(An earlier convention used `~~strikethrough~~` to grey out done items, but Claude Code's markdown renderer doesn't interpret strikethrough reliably — the `~~` markers show literally. Stick with bold for in-progress only; the `[x]` vs `[ ]` brackets carry the done/pending distinction visually.)
-
-**Render the checklist as a normal markdown list — NOT wrapped in a code block** (` ``` `…` ``` `). Code blocks render their contents as monospaced literal text and won't interpret `**bold**` markers, defeating the visual hierarchy. The example below is shown as-is, the way it should appear in the response:
-
+```
 plan-rollout progress:
 - [ ] 1. Analyzed the diff (services, paths, data writes, infra)
 - [ ] 2. Risk-tiered the change (low/medium/high + reason)
@@ -55,6 +52,7 @@ plan-rollout progress:
 - [ ] 9. Picked rollback hint (one line)
 - [ ] 10. Asked the user about ambiguities (or noted N/A)
 - [ ] 11. Rendered plan section + companion check
+```
 
 ### 1. Analyse the diff
 

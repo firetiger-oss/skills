@@ -21,17 +21,15 @@ For a longer SRE-vocabulary intro, read [references/overview.md](references/over
 
 ## Workflow
 
-Copy this checklist into the response and tick items off as work progresses. Marker conventions: `[x]` done · `**[~] N. ... ← in progress**` for the active step (bolded with the `← in progress` suffix) · `**[!] N. ... ← blocked: <reason>**` for a blocked step · `[ ]` pending. The bracket markers carry the state; bold makes the active step pop.
+Copy this checklist into the response and tick items off as work progresses:
 
-(An earlier convention used `~~strikethrough~~` to grey out done items, but Claude Code's markdown renderer doesn't interpret strikethrough reliably — the `~~` markers show literally. Stick with bold for in-progress only; the `[x]` vs `[ ]` brackets carry the done/pending distinction visually.)
-
-**Render the checklist as a normal markdown list — NOT wrapped in a code block** (` ``` `…` ``` `). Code blocks render their contents as monospaced literal text and won't interpret `**bold**` markers, defeating the visual hierarchy. The example below is shown as-is, the way it should appear in the response:
-
+```
 rollout progress:
 - [ ] 1. Determined which phase the user is in (plan / monitor / post-merge-no-plan / both)
 - [ ] 2. Verified the relevant sub-skill(s) installed
 - [ ] 3. Invoked the relevant sub-skill (or printed install hint and paused)
 - [ ] 4. (post-merge-no-plan / both) Threaded plan-rollout output into monitor-rollout invocation
+```
 
 ### 1. Determine the phase
 
