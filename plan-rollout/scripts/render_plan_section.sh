@@ -71,11 +71,25 @@ if [ -z "$OUT_PATH" ]; then
 fi
 
 # --- field substitution ---
-# Read each top-level key into an env var of the same name (uppercased).
-while IFS=$'\t' read -r -d $'\0' key value; do
+# Read each top-level JSON key into an env var of the same name (uppercased).
+#
+# Implementation note: we emit NUL-separated <key>\t<value>\0 records from jq
+# and read them with `read -d ''` (NUL-as-delimiter, the bash idiom for NUL).
+# The NUL byte is constructed via `[0] | implode` because literal NUL chars
+# in jq source strings get filtered out in transit (shell quoting, file edit
+# tools that disallow NULs, etc.); `[0] | implode` is pure ASCII source that
+# constructs a 1-byte string with byte value 0 at runtime.
+#
+# An earlier version used newline-separated records with `read -d $'\0'`,
+# which silently slurped the whole input on the first iteration because there
+# was no NUL — only the first key/value got set and every subsequent
+# ${PLAN_*} placeholder rendered as empty. NUL delimiters are the right shape
+# for shell-piped JSON values that may themselves contain newlines.
+while IFS=$'\t' read -r -d '' key value; do
+    [ -z "$key" ] && continue
     var=$(printf '%s' "$key" | tr '[:lower:]-' '[:upper:]_')
     export "PLAN_$var=$value"
-done < <(printf '%s' "$INPUT" | jq -r 'to_entries[] | "\(.key)\t\(.value) "')
+done < <(printf '%s' "$INPUT" | jq -j 'to_entries[] | "\(.key)\t\(.value)" + ([0] | implode)')
 
 # --- render ---
 render_to_stdout() {
