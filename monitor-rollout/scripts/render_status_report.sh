@@ -37,57 +37,57 @@ field() {
 case "$TYPE" in
     deploy_detected)
         cat <<EOF
-## [STATUS: DEPLOY_DETECTED — $(field env)]
+## **DEPLOY_DETECTED** — *$(field env)*
 
-- **Env:** $(field env)
-- **Deploy time:** $(field deploy_time)
+- **Env:** \`$(field env)\`
+- **Deploy time:** \`$(field deploy_time)\`
 - **Source:** $(field source)
-- **Commit:** $(field commit)
-- **Next checkpoint:** $(field next_offset) at $(field next_abs)
+- **Commit:** \`$(field commit)\`
+- **Next checkpoint:** **$(field next_offset)** at \`$(field next_abs)\`
 
 Other envs:
-$(printf '%s' "$INPUT" | jq -r '.other_envs[]? | "- \(.name): \(.note)"')
+$(printf '%s' "$INPUT" | jq -r '.other_envs[]? | "- `\(.name)`: \(.note)"')
 
-**Next event expected:** $(field next_abs) (\`bash sleep_until.sh $(field next_abs) $(field plan_path) $(field next_offset)\` running in background)
+**Next event expected:** \`$(field next_abs)\` (\`bash sleep_until.sh $(field next_abs) $(field plan_path) $(field next_offset)\` running in background)
 EOF
         ;;
 
     check_complete)
         cat <<EOF
-## [STATUS: CHECK_COMPLETE @ $(field offset)]
+## **CHECK_COMPLETE** @ **$(field offset)**
 
 | Env | Intended? | Indicators verdict | Notes |
 |-----|-----------|--------------------|-------|
-$(printf '%s' "$INPUT" | jq -r '.envs[] | "| \(.name) | \(.intended_status) | \(.indicators_summary) | \(.notes) |"')
+$(printf '%s' "$INPUT" | jq -r '.envs[] | "| `\(.name)` | **\(.intended_status)** | \(.indicators_summary) | \(.notes) |"')
 
-**Next checkpoint:** $(field next_offset_or_terminal)
+**Next checkpoint:** **$(field next_offset_or_terminal)**
 
-**Next event expected:** $(field next_abs) (\`bash sleep_until.sh $(field next_abs) $(field plan_path) $(field next_offset_or_terminal)\` running in background)
+**Next event expected:** \`$(field next_abs)\` (\`bash sleep_until.sh $(field next_abs) $(field plan_path) $(field next_offset_or_terminal)\` running in background)
 EOF
         ;;
 
     issue_detected)
         cat <<EOF
-## [STATUS: ISSUE_DETECTED — $(field env) @ $(field offset)]
+## **ISSUE_DETECTED** — *$(field env)* @ **$(field offset)**
 
-**Env:** $(field env)
+**Env:** \`$(field env)\`
 
 **Failing indicators:**
 
 | Indicator | Pre | Post | Δ | Threshold |
 |-----------|-----|------|---|-----------|
-$(printf '%s' "$INPUT" | jq -r '.failing[] | "| \(.name) | \(.pre) | \(.post) | \(.delta) | \(.threshold) |"')
+$(printf '%s' "$INPUT" | jq -r '.failing[] | "| `\(.name)` | `\(.pre)` | `\(.post)` | **\(.delta)** | `\(.threshold)` |"')
 
 **Evidence (per evidence-discipline gate):**
-- Baseline window: $(field evidence.baseline_window)
-- Same-time-of-day comparison: $(field evidence.same_tod)
-- Analytical reason: $(field evidence.reason)
-- Variance test: $(field evidence.variance)
+- **Baseline window:** $(field evidence.baseline_window)
+- **Same-time-of-day comparison:** $(field evidence.same_tod)
+- **Analytical reason:** $(field evidence.reason)
+- **Variance test:** $(field evidence.variance)
 
 **Recommended action:** roll back via \`$(field rollback_hint)\`. Re-run \`/monitor-rollout $(field plan_path)\` after the rollback to confirm metrics return to baseline.
 
 **Other envs:**
-$(printf '%s' "$INPUT" | jq -r '.other_envs[]? | "- \(.name): \(.note)"')
+$(printf '%s' "$INPUT" | jq -r '.other_envs[]? | "- `\(.name)`: \(.note)"')
 
 **Handoff:** entering plan mode to design the fix.
 
@@ -97,16 +97,16 @@ EOF
 
     completed)
         cat <<EOF
-## [STATUS: COMPLETED]
+## **COMPLETED**
 
-**Window:** $(field window_start) → $(field window_end)  ($(field tier) tier, $(field n_checkpoints) checkpoints)
-**Envs:** $(field envs)
+- **Window:** \`$(field window_start)\` → \`$(field window_end)\` (**$(field tier)** tier, **$(field n_checkpoints)** checkpoints)
+- **Envs:** $(field envs)
 
 **Intended effects confirmed:**
-$(printf '%s' "$INPUT" | jq -r '.intended_confirmed[]? | "- \(.env) — \(.detail)"')
+$(printf '%s' "$INPUT" | jq -r '.intended_confirmed[]? | "- `\(.env)` — \(.detail)"')
 
 **Inconclusive notes:**
-$(printf '%s' "$INPUT" | jq -r '.inconclusive[]? | "- \(.env) — \(.detail)"')
+$(printf '%s' "$INPUT" | jq -r '.inconclusive[]? | "- `\(.env)` — \(.detail)"')
 
 **Monitoring window closed; no further checkpoints scheduled. Safe to close this loop.**
 
@@ -116,14 +116,14 @@ EOF
 
     fatal_error)
         cat <<EOF
-## [STATUS: FATAL_ERROR]
+## **FATAL_ERROR**
 
 **Cause:** $(field cause)
 
 **Detail:**
-- Plan parse: $(field detail.plan_parse)
-- Polling: $(field detail.polling)
-- Telemetry: $(field detail.telemetry)
+- **Plan parse:** $(field detail.plan_parse)
+- **Polling:** $(field detail.polling)
+- **Telemetry:** $(field detail.telemetry)
 
 The executor is stopping. Resolve the underlying issue and re-invoke \`/monitor-rollout $(field plan_path)\`.
 
@@ -133,7 +133,7 @@ EOF
 
     warning)
         cat <<EOF
-## [STATUS: WARNING — $(field env)]
+## **WARNING** — *$(field env)*
 
 $(field message)
 
