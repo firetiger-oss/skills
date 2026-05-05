@@ -66,7 +66,8 @@ Details in [references/checkpoint-loop.md](references/checkpoint-loop.md).
 
 Copy this checklist into the response and tick items off as the monitoring window progresses. Marker conventions: `~~[x]~~` done (strikethrough — greyed-out, less important because done) · `**[~] N. ... ← in progress**` for the active step (bolded with the `← in progress` suffix) · `**[!] N. ... ← blocked: <reason>**` for a blocked step (e.g. telemetry MCP unreachable) · `[ ]` pending. The visual hierarchy: done fades back, current pops, pending sits at default weight; the `[!]` marker tells the user something needs attention without stopping the run.
 
-```
+**Render the checklist as a normal markdown list — NOT wrapped in a code block** (` ``` `…` ``` `). Code blocks render their contents as monospaced literal text and won't interpret `**bold**` / `~~strikethrough~~` markers, defeating the visual hierarchy. The example below is shown as-is, the way it should appear in the response:
+
 monitor-rollout progress:
 - [ ] 1. Parsed plan (tier, indicators, schedule, deploy-detection per env, rollback)
 - [ ] 2. Companion check (plan exists; if not, point at rollout umbrella for post-merge-no-plan flow)
@@ -76,7 +77,6 @@ monitor-rollout progress:
 - [ ] 6. Checkpoint @ +Xm — ran indicators with GROUP BY env, applied evidence discipline, emitted per-env table
 - [ ] 7. (repeat 6 per checkpoint)
 - [ ] 8. Terminal: COMPLETED (all envs no issue) | first ISSUE_DETECTED → EnterPlanMode | FATAL_ERROR
-```
 
 ### 1. Parse the plan
 

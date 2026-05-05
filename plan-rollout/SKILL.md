@@ -39,7 +39,8 @@ Per-deploy-system recipes:
 
 Copy this checklist into the response and tick items off as work progresses. Marker conventions: `~~[x]~~` done (strikethrough — greyed-out, less important because done) · `**[~] N. ... ← in progress**` for the active step (bolded with the `← in progress` suffix) · `**[!] N. ... ← blocked: <reason>**` for a blocked step · `[ ]` pending. The visual hierarchy: done fades back, current pops, pending sits at default weight.
 
-```
+**Render the checklist as a normal markdown list — NOT wrapped in a code block** (` ``` `…` ``` `). Code blocks render their contents as monospaced literal text and won't interpret `**bold**` / `~~strikethrough~~` markers, defeating the visual hierarchy. The example below is shown as-is, the way it should appear in the response:
+
 plan-rollout progress:
 - [ ] 1. Analyzed the diff (services, paths, data writes, infra)
 - [ ] 2. Risk-tiered the change (low/medium/high + reason)
@@ -52,7 +53,6 @@ plan-rollout progress:
 - [ ] 9. Picked rollback hint (one line)
 - [ ] 10. Asked the user about ambiguities (or noted N/A)
 - [ ] 11. Rendered plan section + companion check
-```
 
 ### 1. Analyse the diff
 
