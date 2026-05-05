@@ -9,7 +9,7 @@
 - FATAL_ERROR
 - WARNING
 
-These are the literal markdown shapes the executor emits. Keep them stable — adopters and downstream tooling may grep for the `## **<STATUS>**` headings.
+These are the literal markdown shapes the executor emits. Keep them stable — adopters and downstream tooling may grep for the `## <emoji> **<STATUS>**` headings.
 
 **Hard rule:** every block ends with a `**Next event expected:**` line so the user always knows when to expect the next message. For terminal blocks, the line reads `**Next event:** none — terminal state.` Silence is a bug.
 
@@ -17,19 +17,33 @@ These are the literal markdown shapes the executor emits. Keep them stable — a
 
 The agent composes the user-facing message; the renderer emits the same shape. Follow these conventions consistently so the user can scan at a glance:
 
-- **Status type** (the block-kind word) is **bold** in the H2 heading.
-- **Env name** in the heading is *italicised*; in tables it's wrapped in `` `code` `` spans.
-- **Field labels** (`Env:`, `Deploy time:`, `Source:`, `Commit:`, `Next checkpoint:`, etc.) are **bold**.
-- **Timestamps, commit SHAs, file paths, command snippets** go in `` `code` `` spans.
-- **Verdict words** (`confirmed`, `unchanged`, `regressed`, `inconclusive`) are **bold** in tables.
-- **Per-indicator status markers** (`✓`, `✗`) are wrapped in `` `code` `` spans inside the verdict cell.
-- **Offset markers** (`+10m`, `+30m`) are **bold** when they're the subject of a heading or "next checkpoint" line.
-- **No emoji.** Markdown formatting only — universal across coding-agent harnesses, no rendering surprises.
+**Heading emoji** (one per status block — traffic-light for ongoing state, event glyphs for transitions):
+
+| Block | Emoji | Why |
+|-------|-------|-----|
+| DEPLOY_DETECTED | 🚀 | Launch event — rollout has started for this env. |
+| CHECK_COMPLETE (clean) | 🟢 | All indicators clean; nothing to act on. |
+| CHECK_COMPLETE (any INCONCLUSIVE) | 🟡 | At least one indicator couldn't be evaluated; user may want to look. |
+| ISSUE_DETECTED | 🔴 | Regression confirmed; rollback recommended. |
+| COMPLETED | 🏁 | Monitoring window closed cleanly; finish flag. |
+| FATAL_ERROR | 🔴 | Executor stopped; user intervention needed. |
+| WARNING | ⚠️ | Mid-run user input needed (e.g. deploy never observed). |
+
+**Other formatting** (no additional emoji — keep it restrained):
+
+- Status type word in heading: **bold**
+- Env name in heading: *italicised*
+- Env name in tables: `code span`
+- Field labels (`Env:`, `Deploy time:`, etc.): **bold**
+- Timestamps, SHAs, paths, commands: `code spans`
+- Verdict words (`confirmed`, `unchanged`, `regressed`, `inconclusive`): **bold**
+- Per-indicator markers (`✓`, `✗`): `code spans`
+- Offset markers (`+10m`, `+30m`) when they're a heading subject: **bold**
 
 ## DEPLOY_DETECTED
 
 ```markdown
-## **DEPLOY_DETECTED** — *<env>*
+## 🚀 **DEPLOY_DETECTED** — *<env>*
 
 - **Env:** `<env-name>`
 - **Deploy time:** `<iso8601 utc>`
@@ -46,8 +60,10 @@ Other envs:
 
 ## CHECK_COMPLETE
 
+Heading is 🟢 when every indicator's verdict is `confirmed` / `unchanged`. Heading is 🟡 when any indicator is `inconclusive` (telemetry tool failed, baseline missing, evidence-discipline check rejected the reading).
+
 ```markdown
-## **CHECK_COMPLETE** @ **+<offset>**
+## 🟢 **CHECK_COMPLETE** @ **+<offset>**
 
 | Env | Intended? | Indicators verdict | Notes |
 |-----|-----------|--------------------|-------|
@@ -59,14 +75,14 @@ Other envs:
 **Next event expected:** `<absolute time>` (`bash sleep_until.sh <abs> <plan> +<next-offset>` running in background)
 ```
 
-When an indicator goes to `INCONCLUSIVE`, list the reason in the Notes column:
+When an indicator goes to `INCONCLUSIVE`, switch the heading emoji to 🟡 and list the reason in the Notes column:
 
 > "p99-latency: query failed twice (Datadog 5xx); marked **inconclusive**."
 
 ## ISSUE_DETECTED
 
 ```markdown
-## **ISSUE_DETECTED** — *<env>* @ **+<offset>**
+## 🔴 **ISSUE_DETECTED** — *<env>* @ **+<offset>**
 
 **Env:** `<env-name>`
 
@@ -97,7 +113,7 @@ When an indicator goes to `INCONCLUSIVE`, list the reason in the Notes column:
 ## COMPLETED
 
 ```markdown
-## **COMPLETED**
+## 🏁 **COMPLETED**
 
 - **Window:** `<start>` → `<end>` (**<tier>** tier, **<N>** checkpoints)
 - **Envs:** `<list>`
@@ -117,7 +133,7 @@ When an indicator goes to `INCONCLUSIVE`, list the reason in the Notes column:
 ## FATAL_ERROR
 
 ```markdown
-## **FATAL_ERROR**
+## 🔴 **FATAL_ERROR**
 
 **Cause:** <one-line reason>
 
@@ -134,7 +150,7 @@ The executor is stopping. Resolve the underlying issue and re-invoke `/monitor-r
 ## WARNING
 
 ```markdown
-## **WARNING** — *<env>*
+## ⚠️ **WARNING** — *<env>*
 
 <message>
 

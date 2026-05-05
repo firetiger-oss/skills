@@ -37,7 +37,7 @@ field() {
 case "$TYPE" in
     deploy_detected)
         cat <<EOF
-## **DEPLOY_DETECTED** — *$(field env)*
+## 🚀 **DEPLOY_DETECTED** — *$(field env)*
 
 - **Env:** \`$(field env)\`
 - **Deploy time:** \`$(field deploy_time)\`
@@ -53,8 +53,15 @@ EOF
         ;;
 
     check_complete)
+        # Heading emoji: 🟢 if all clean, 🟡 if any indicator inconclusive.
+        # Caller passes `has_inconclusive: true|false` in the JSON input.
+        if [ "$(field has_inconclusive)" = "true" ]; then
+            CC_EMOJI="🟡"
+        else
+            CC_EMOJI="🟢"
+        fi
         cat <<EOF
-## **CHECK_COMPLETE** @ **$(field offset)**
+## $CC_EMOJI **CHECK_COMPLETE** @ **$(field offset)**
 
 | Env | Intended? | Indicators verdict | Notes |
 |-----|-----------|--------------------|-------|
@@ -68,7 +75,7 @@ EOF
 
     issue_detected)
         cat <<EOF
-## **ISSUE_DETECTED** — *$(field env)* @ **$(field offset)**
+## 🔴 **ISSUE_DETECTED** — *$(field env)* @ **$(field offset)**
 
 **Env:** \`$(field env)\`
 
@@ -97,7 +104,7 @@ EOF
 
     completed)
         cat <<EOF
-## **COMPLETED**
+## 🏁 **COMPLETED**
 
 - **Window:** \`$(field window_start)\` → \`$(field window_end)\` (**$(field tier)** tier, **$(field n_checkpoints)** checkpoints)
 - **Envs:** $(field envs)
@@ -116,7 +123,7 @@ EOF
 
     fatal_error)
         cat <<EOF
-## **FATAL_ERROR**
+## 🔴 **FATAL_ERROR**
 
 **Cause:** $(field cause)
 
@@ -133,7 +140,7 @@ EOF
 
     warning)
         cat <<EOF
-## **WARNING** — *$(field env)*
+## ⚠️ **WARNING** — *$(field env)*
 
 $(field message)
 

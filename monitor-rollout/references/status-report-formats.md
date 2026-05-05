@@ -12,7 +12,7 @@
 
 The executor emits one of these blocks at every significant transition. The blocks are normal markdown the user reads inline; no parse contract is needed because the main session is the one rendering them.
 
-Each block starts with a `## **<STATUS-TYPE>**` heading so the user (and the agent reading back the conversation) can find them quickly.
+Each block starts with a `## <emoji> **<STATUS-TYPE>**` heading so the user (and the agent reading back the conversation) can find them quickly.
 
 ## Hard rules
 
@@ -28,6 +28,20 @@ This is the silence-prevention contract. The user should never wonder "is the ex
 
 The agent composes the user-facing message; the renderer emits the same shape. Follow these conventions consistently so the user can scan at a glance:
 
+**Heading emoji** (one per status block — traffic-light circles for ongoing state, event glyphs for transitions):
+
+| Block | Emoji | Why |
+|-------|-------|-----|
+| DEPLOY_DETECTED | 🚀 | Launch event — rollout has started for this env. |
+| CHECK_COMPLETE (clean) | 🟢 | All indicators clean; nothing to act on. |
+| CHECK_COMPLETE (any INCONCLUSIVE) | 🟡 | At least one indicator couldn't be evaluated; user may want to look. |
+| ISSUE_DETECTED | 🔴 | Regression confirmed; rollback recommended. |
+| COMPLETED | 🏁 | Monitoring window closed cleanly; finish flag. |
+| FATAL_ERROR | 🔴 | Executor stopped; user intervention needed. |
+| WARNING | ⚠️ | Mid-run user input needed (e.g. deploy never observed). |
+
+**Other formatting:**
+
 | Element | Style |
 |---------|-------|
 | Status-type word in heading | `**bold**` |
@@ -39,16 +53,16 @@ The agent composes the user-facing message; the renderer emits the same shape. F
 | Per-indicator markers (`✓`, `✗`) | `` `code spans` `` |
 | Offset markers (`+10m`, `+30m`) when they're a heading subject | `**bold**` |
 
-**No emoji.** Markdown formatting only — renders universally across coding-agent harnesses (Claude Code, Codex, Cursor, Cline, etc.) without ANSI or unicode rendering surprises.
+**Restraint principle:** one emoji per block heading, none inside tables. The heading emoji is the at-a-glance "what kind of event is this and is it good or bad?" signal; verdict cells stay text-only with the existing `✓` / `✗` Unicode marks.
 
-The render script (`scripts/render_status_report.sh`) emits these conventions automatically; when the agent composes a block freely, follow the same conventions for consistency. Adopters and downstream tooling may grep `## \*\*<STATUS>` patterns; keep the bold-heading shape stable.
+The render script (`scripts/render_status_report.sh`) emits these conventions automatically; when the agent composes a block freely, follow the same conventions for consistency. Adopters and downstream tooling may grep `## <emoji> \*\*<STATUS>` patterns; keep the bold-heading shape stable.
 
 ## DEPLOY_DETECTED
 
 Emitted when an env's deploy-detection match condition fires for the first time.
 
 ```markdown
-## **DEPLOY_DETECTED** — *<env>*
+## 🚀 **DEPLOY_DETECTED** — *<env>*
 
 - **Env:** `<env-name>`
 - **Deploy time:** `<iso8601 utc>`
@@ -65,10 +79,10 @@ Other envs:
 
 ## CHECK_COMPLETE
 
-Emitted at every checkpoint that doesn't trigger a terminal state.
+Emitted at every checkpoint that doesn't trigger a terminal state. Heading is 🟢 when every indicator's verdict is `confirmed` / `unchanged`; heading is 🟡 when any indicator is `inconclusive`.
 
 ```markdown
-## **CHECK_COMPLETE** @ **+<offset>**
+## 🟢 **CHECK_COMPLETE** @ **+<offset>**
 
 | Env | Intended? | Indicators verdict | Notes |
 |-----|-----------|--------------------|-------|
@@ -80,7 +94,7 @@ Emitted at every checkpoint that doesn't trigger a terminal state.
 **Next event expected:** `<absolute time>` (`bash sleep_until.sh <abs> <plan> +<next-offset>` running in background)
 ```
 
-When an indicator goes to `INCONCLUSIVE`, list the reason in the Notes column:
+When an indicator goes to `INCONCLUSIVE`, switch the heading emoji to 🟡 and list the reason in the Notes column:
 
 > "p99-latency: query failed twice (Datadog 5xx); marked **inconclusive**."
 
@@ -89,7 +103,7 @@ When an indicator goes to `INCONCLUSIVE`, list the reason in the Notes column:
 Emitted when any env's per-indicator verdict goes to `regressed` after the evidence-discipline gate. Triggers `EnterPlanMode`.
 
 ```markdown
-## **ISSUE_DETECTED** — *<env>* @ **+<offset>**
+## 🔴 **ISSUE_DETECTED** — *<env>* @ **+<offset>**
 
 **Env:** `<env-name>`
 
@@ -124,7 +138,7 @@ After this block, the skill calls `EnterPlanMode` with a seed plan from [`plan-m
 Emitted when all envs have reached their final checkpoint with no `ISSUE_DETECTED`.
 
 ```markdown
-## **COMPLETED**
+## 🏁 **COMPLETED**
 
 - **Window:** `<start>` → `<end>` (**<tier>** tier, **<N>** checkpoints)
 - **Envs:** `<list>`
@@ -148,7 +162,7 @@ The "safe to close this loop" line matters: it tells the user explicitly that th
 Emitted when the executor cannot continue.
 
 ```markdown
-## **FATAL_ERROR**
+## 🔴 **FATAL_ERROR**
 
 **Cause:** <one-line reason>
 
@@ -172,7 +186,7 @@ Common FATAL_ERROR triggers:
 Emitted when the executor needs user input mid-run (e.g. a deploy didn't start within 30 min, or telemetry's authentication state changed).
 
 ```markdown
-## **WARNING** — *<env>*
+## ⚠️ **WARNING** — *<env>*
 
 <message>
 
