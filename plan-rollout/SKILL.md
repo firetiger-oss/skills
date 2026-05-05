@@ -37,7 +37,7 @@ Per-deploy-system recipes:
 
 ## Workflow
 
-Copy this checklist into the response and tick items off as work progresses:
+Copy this checklist into the response and tick items off as work progresses. Marker conventions: `~~[x]~~` done (strikethrough — greyed-out, less important because done) · `**[~] N. ... ← in progress**` for the active step (bolded with the `← in progress` suffix) · `**[!] N. ... ← blocked: <reason>**` for a blocked step · `[ ]` pending. The visual hierarchy: done fades back, current pops, pending sits at default weight.
 
 ```
 plan-rollout progress:

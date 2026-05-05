@@ -64,7 +64,7 @@ Details in [references/checkpoint-loop.md](references/checkpoint-loop.md).
 
 ## Workflow
 
-Copy this checklist into the response and tick items off as the monitoring window progresses:
+Copy this checklist into the response and tick items off as the monitoring window progresses. Marker conventions: `~~[x]~~` done (strikethrough — greyed-out, less important because done) · `**[~] N. ... ← in progress**` for the active step (bolded with the `← in progress` suffix) · `**[!] N. ... ← blocked: <reason>**` for a blocked step (e.g. telemetry MCP unreachable) · `[ ]` pending. The visual hierarchy: done fades back, current pops, pending sits at default weight; the `[!]` marker tells the user something needs attention without stopping the run.
 
 ```
 monitor-rollout progress:
