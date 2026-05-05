@@ -48,7 +48,7 @@ Other envs continue regardless. If the user says "abort this env," remove it fro
 
 **Trigger:** the env's deploy_time and the local agent's clock differ by >60 seconds.
 
-**Action:** emit a `WARNING` and continue. Use the local clock for `ScheduleWakeup` (the only one we control) but record the deploy system's time in the `DEPLOY_DETECTED` block for the user's reference.
+**Action:** emit a `WARNING` and continue. Use the local clock for `sleep_until.sh` (the only one we control) but record the deploy system's time in the `DEPLOY_DETECTED` block for the user's reference.
 
 ## Missed wake-up (machine asleep / harness paused)
 

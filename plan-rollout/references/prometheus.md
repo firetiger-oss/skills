@@ -1,11 +1,13 @@
-# Prometheus (telemetry source)
+# Prometheus / Mimir (telemetry source — Grafana stack: metrics)
+
+This file covers both Prometheus and Grafana Mimir. They are wire-compatible at the query API; everything below applies to both. The planner's probe checks `PROMETHEUS_URL` and `MIMIR_URL` env vars equivalently.
 
 ## Detection
 
-Prometheus / PromQL is **priority-4**. Detect via:
-- MCP tools matching `Prometheus:*` or `Grafana:*` with a Prometheus datasource.
+Prometheus / Mimir / PromQL is part of the Grafana stack tier. Detect via:
+- MCP tools matching `Prometheus:*`, `Mimir:*`, or `Grafana:*` with a Prometheus-flavoured datasource.
 - The `promtool` CLI on `$PATH`.
-- A reachable Prometheus HTTP endpoint (`PROMETHEUS_URL` env or `prometheus.yml` config).
+- A reachable HTTP endpoint via `PROMETHEUS_URL` or `MIMIR_URL` env var.
 
 ## Indicator query patterns
 

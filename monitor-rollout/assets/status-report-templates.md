@@ -10,6 +10,8 @@
 
 These are the literal markdown shapes the executor emits. Keep them stable — adopters and downstream tooling may grep for the `## [STATUS: ...]` headers.
 
+**Hard rule:** every block ends with a `**Next event expected:**` line so the user always knows when to expect the next message. For terminal blocks, the line reads `**Next event:** none — terminal state.` Silence is a bug.
+
 ## DEPLOY_DETECTED
 
 ```markdown
@@ -24,6 +26,8 @@ These are the literal markdown shapes the executor emits. Keep them stable — a
 Other envs:
 - <env-2>: still polling for deploy
 - <env-3>: deploy detected at <ts>, next checkpoint at <abs>
+
+**Next event expected:** <absolute time> (`bash sleep_until.sh <abs> <plan> +<offset>` running in background)
 ```
 
 ## CHECK_COMPLETE
@@ -37,6 +41,8 @@ Other envs:
 | prod    | not yet visible | error-rate ✓ unchanged, p99-latency ✓ unchanged, cache-hit unchanged | Hit ratio steady — flag rollout still 0% in prod. |
 
 **Next checkpoint:** +<next-offset> at <abs time>
+
+**Next event expected:** <absolute time> (`bash sleep_until.sh <abs> <plan> +<next-offset>` running in background)
 ```
 
 ## ISSUE_DETECTED
@@ -66,6 +72,8 @@ Other envs:
 - <env-3>: unchanged.
 
 **Handoff:** entering plan mode to design the fix.
+
+**Next event:** none — terminal state.
 ```
 
 ## COMPLETED
@@ -84,6 +92,8 @@ Other envs:
 - staging p99-latency at +24h was inconclusive (Datadog query rate-limited; manual check recommended).
 
 **Monitoring window closed; no further checkpoints scheduled. Safe to close this loop.**
+
+**Next event:** none — terminal state.
 ```
 
 ## FATAL_ERROR
@@ -99,6 +109,8 @@ Other envs:
 - Telemetry: <Datadog reachable | unreachable; tried 3 times>
 
 The executor is stopping. Resolve the underlying issue and re-invoke `/monitor-rollout <plan>`.
+
+**Next event:** none — terminal state.
 ```
 
 ## WARNING
@@ -109,4 +121,6 @@ The executor is stopping. Resolve the underlying issue and re-invoke `/monitor-r
 <message>
 
 <user-question — e.g. "Should I keep polling, abort this env, or stop entirely?">
+
+**Next event expected:** awaiting user response (no background sleep scheduled).
 ```

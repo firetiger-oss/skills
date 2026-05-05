@@ -19,8 +19,39 @@ The plan's `Deploy detection` block contains the exact command for each env. The
 - `scripts/poll_buildkite.sh` — wraps the Buildkite REST API.
 - `scripts/poll_argocd.sh` — wraps `argocd app get`, includes ancestry check via `git merge-base`.
 - `scripts/poll_vercel.sh` — wraps `vercel ls --json`.
+- `scripts/poll_http.sh` — generic HTTP probe; for git-integration deploys (Vercel app, Netlify, Cloudflare Pages, Render auto-deploy) and any generic deploy-system that exposes only an HTTP surface.
 
 Use these scripts when the plan's deploy-detection block names a known system; fall back to running the plan's command verbatim when the script doesn't cover an edge case.
+
+## When deploy detection is HTTP-only (git-integration, generic webhooks)
+
+Some deploy systems (Vercel git-integration via the GitHub app, Netlify git-integration, Cloudflare Pages, Render auto-deploy) expose no API the planner can poll directly. The deploy is "live" when:
+- The site's home URL serves a 200 response, AND
+- The response body / headers carry a build identifier matching the merged commit.
+
+`scripts/poll_http.sh` handles this generically. Three match modes:
+
+```bash
+# Match on HTTP status (simplest case)
+bash scripts/poll_http.sh https://example.com --match-status 200
+
+# Match on body content (build identifier embedded in response)
+bash scripts/poll_http.sh https://example.com/version --match-body-contains "abc123def"
+
+# Match on response header (e.g. X-Build-Sha set by deploy system)
+bash scripts/poll_http.sh https://example.com --match-header "X-Build-Sha=abc123def"
+```
+
+Exit 0 on match, with a UTC timestamp on stdout (the recorded `deploy_time`). Exit 1 if not yet matched (caller retries on the 30s cadence).
+
+In the plan's `Deploy detection` block:
+
+```
+#### production
+Deploy detection:
+  bash poll_http.sh https://example.com/api/version --match-body-contains "<merge_sha>"
+Match: HTTP 200 AND body contains the merged commit SHA
+```
 
 ## When the plan's command needs adjustment at runtime
 

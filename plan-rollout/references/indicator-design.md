@@ -26,6 +26,32 @@ For each affected service:
 2. **One intended-effect indicator** — the metric the change is *supposed* to move. Mark `direction: intended-up` or `intended-down`.
 3. **One business-outcome indicator** if one exists for the affected surface (checkout success, signup rate, search clickthrough). Ask the user if not obvious.
 
+## Source kinds
+
+Every indicator declares a **source kind** that tells the executor how to fetch the indicator's value at checkpoint time.
+
+| Kind | When to use | Example |
+|------|-------------|---------|
+| `metrics-query` | Any structured metrics query language — Datadog, PromQL, APL, TraceQL. | `Datadog:query_metrics` `sum:errors{service:my-svc}.as_count() / sum:requests{service:my-svc}.as_count() by {env}` |
+| `log-search` | Log queries that produce a count or rate (typically Loki LogQL or Honeycomb COUNT_WHERE). | `Loki:query` `sum(rate({service="my-svc", level="error"}[5m])) by (env)` |
+| `shell` | Arbitrary shell command. The executor runs it and captures stdout. Used for HTTP probes, content equality checks, exit-code-based liveness, and anything that doesn't fit the structured-query model. | `curl -sS -o /dev/null -w "%{http_code}\n" https://example.com/` |
+
+The Source column in the indicators table starts with the kind in backticks, then the source body. Examples:
+
+```
+| Name | Kind | Source | ... |
+|------|------|--------|-----|
+| err-rate     | ratio | `metrics-query` `Datadog:query_metrics` ` ...query string... ` | ... |
+| log-errors   | gauge | `log-search`     `Loki:query` ` ...LogQL... `                 | ... |
+| home-page-up | gauge | `shell` `curl -sS -o /dev/null -w "%{http_code}\n" https://...` | ... |
+```
+
+The executor parses the kind first, then dispatches:
+- `metrics-query` and `log-search` → run the named MCP tool with the query string; map the result to the indicator's value.
+- `shell` → run the command via Bash; the value is stdout (a single line), and the verdict is computed by comparing stdout to the threshold expression.
+
+For `shell` indicators, the `Threshold` column expresses the comparison directly against the command's stdout — e.g. `!= 200 sustained 60s`, `!= "abc123def" by +5m`. The executor doesn't need to know the unit; it just compares strings or numerics as the threshold expression dictates.
+
 ## Querying the 24-hour baseline
 
 Run each indicator's query *now* against the last 24 hours; capture the value per env. Format:
@@ -39,6 +65,8 @@ baseline:
   staging: 0.21%  (queried 2026-05-04T15:00Z, last 24h)
   prod:    0.08%  (queried 2026-05-04T15:00Z, last 24h)
 ```
+
+For `shell` indicators, the baseline can be a representative single-shot value (e.g. `200` for an HTTP status probe) or `(n/a — first deploy)` if the change is what introduces the surface being probed.
 
 **Rule:** baseline window ≥24h. Anything shorter is rejected by the executor's evidence-discipline gate. If the source can't deliver 24h of history, mark `baseline: pending` with the retention limit and let the executor flag it `INCONCLUSIVE`.
 

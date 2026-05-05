@@ -1,6 +1,21 @@
 # Canonical wording for clarifying questions
 
-Use these phrasings when the plan workflow hits an ambiguity. The wording matters: too vague and the user gives a non-answer, too specific and the user feels interrogated.
+Use these phrasings when the plan workflow hits an ambiguity in **interactive mode**. The wording matters: too vague and the user gives a non-answer, too specific and the user feels interrogated.
+
+## Auto-mode behaviour
+
+When the system signal indicates auto mode is active (a `system-reminder` mentions auto mode, or the agent is operating headless), do **NOT** ask these questions. Use the tier-defaults and log each skipped question as an explicit assumption in the rendered plan section, e.g.:
+
+```
+**Assumptions (auto mode):**
+- Telemetry source: defaulted to Datadog (priority #1, MCP available)
+- "Good" requests: 2xx only (auth-required 401s excluded)
+- Feature flag rollout: assumed fully on (no flag found in diff)
+- Rollback procedure: revert PR + redeploy via deploy.yml (inferred from CI config)
+- Monitoring window: tier-default (medium = +10m,+30m,+1h,+2h)
+```
+
+The user reviews the rendered plan before invoking monitor-rollout — they retain veto and edit power on every assumption. Auto mode is the explicit instruction to proceed without blocking; respect it.
 
 ## Telemetry tool
 

@@ -47,6 +47,8 @@ case "$TYPE" in
 
 Other envs:
 $(printf '%s' "$INPUT" | jq -r '.other_envs[]? | "- \(.name): \(.note)"')
+
+**Next event expected:** $(field next_abs) (\`bash sleep_until.sh $(field next_abs) $(field plan_path) $(field next_offset)\` running in background)
 EOF
         ;;
 
@@ -59,6 +61,8 @@ EOF
 $(printf '%s' "$INPUT" | jq -r '.envs[] | "| \(.name) | \(.intended_status) | \(.indicators_summary) | \(.notes) |"')
 
 **Next checkpoint:** $(field next_offset_or_terminal)
+
+**Next event expected:** $(field next_abs) (\`bash sleep_until.sh $(field next_abs) $(field plan_path) $(field next_offset_or_terminal)\` running in background)
 EOF
         ;;
 
@@ -86,6 +90,8 @@ $(printf '%s' "$INPUT" | jq -r '.failing[] | "| \(.name) | \(.pre) | \(.post) | 
 $(printf '%s' "$INPUT" | jq -r '.other_envs[]? | "- \(.name): \(.note)"')
 
 **Handoff:** entering plan mode to design the fix.
+
+**Next event:** none — terminal state.
 EOF
         ;;
 
@@ -103,6 +109,8 @@ $(printf '%s' "$INPUT" | jq -r '.intended_confirmed[]? | "- \(.env) — \(.detai
 $(printf '%s' "$INPUT" | jq -r '.inconclusive[]? | "- \(.env) — \(.detail)"')
 
 **Monitoring window closed; no further checkpoints scheduled. Safe to close this loop.**
+
+**Next event:** none — terminal state.
 EOF
         ;;
 
@@ -118,6 +126,8 @@ EOF
 - Telemetry: $(field detail.telemetry)
 
 The executor is stopping. Resolve the underlying issue and re-invoke \`/monitor-rollout $(field plan_path)\`.
+
+**Next event:** none — terminal state.
 EOF
         ;;
 
@@ -128,6 +138,8 @@ EOF
 $(field message)
 
 $(field user_question)
+
+**Next event expected:** awaiting user response (no background sleep scheduled).
 EOF
         ;;
 

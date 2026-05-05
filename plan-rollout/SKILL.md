@@ -1,7 +1,7 @@
 ---
 name: plan-rollout
 description: "Adds a multi-environment change-monitoring section to the agent's plan: enumerates target environments (staging, prod, regions, BYOC tenants), picks SLIs (golden signals + intended-effect + business-outcome) per env or shared, queries 24h baselines, sets baseline-referenced thresholds, and chooses a checkpoint schedule based on risk tier. Use when the user is planning a code change that will be deployed, preparing a rollout, asking how to monitor a release, doing post-deploy validation prep, planning a canary, or wants production watched after merging — even when they don't say 'monitoring plan'. Anchored on Google SRE book vocabulary (golden signals, SLI, error budget, blast radius). Companion to monitor-rollout."
-argument-hint: "[optional: paste of the change diff or PR url]"
+argument-hint: "[optional: paste of the change diff, PR url, or --merge-sha <sha> for post-merge-no-plan]"
 ---
 
 # plan-rollout
@@ -58,6 +58,8 @@ plan-rollout progress:
 
 Run `git diff <base>...<head>` (three dots — merge-base). If the user pasted a PR url, use `gh pr diff <url>` first.
 
+**Post-merge-no-plan invocation (`--merge-sha <sha>` argument):** when the umbrella chains plan-rollout for a post-merge-no-plan case, it passes `--merge-sha <sha>` of the merged commit. In that mode, anchor the diff on the *actual merged change* via `git diff <merge-sha>~1...<merge-sha>` (or `gh pr view <pr> --json mergeCommit,baseRefName` if the user gave a PR URL). This is what the change introduced — same diff the executor's evidence-discipline will reason about. Do not fall back to working-tree HEAD when `--merge-sha` is given; the working tree may have diverged.
+
 Identify:
 - Services and packages touched.
 - HTTP request paths or RPCs whose behaviour changes.
@@ -79,28 +81,46 @@ Run `bash plan-rollout/scripts/enumerate_envs.sh` from inside the repo being cha
 - `argocd/`, `gitops/` for `ApplicationSet` definitions.
 - `vercel.json`, `.vercel/` for preview/prod scopes.
 - `terraform/stacks/`, `deployments/` for fan-out targets.
+- `netlify.toml`, `render.yaml`, `wrangler.toml` (with `[pages]`), `fly.toml` for git-integration deploys.
+- Heuristic for git-integration-only repos (Next/Astro/Remix/Nuxt/SvelteKit + no GH Actions deploy + no IaC): emits `git-integration:likely-vercel-or-netlify`.
+- Stderr emits `no-deploy-config-detected` when nothing fires, so the agent knows to ask explicitly rather than silently assuming single-env.
 
-Surface its output to the user and ask once: *"This change will deploy to {env list}. Confirm or amend."* Don't proceed past step 3 with an unconfirmed env list — getting it wrong silently leaves environments unmonitored.
+**Behaviour by mode:**
+- **Interactive mode** — surface the script's output to the user and ask once: *"This change will deploy to {env list}. Confirm or amend."* Don't proceed past step 3 with an unconfirmed env list — getting it wrong silently leaves environments unmonitored.
+- **Auto mode** (signal: a `system-reminder` mentions auto mode is active, or the agent is operating without a human-in-the-loop) — proceed with the script's output + tier-default below, and **log the assumption explicitly in the rendered plan section**: *"Assumption (auto mode): targeted {env list} based on tier={tier}; user did not confirm at plan-write time."* Auto mode is the user's explicit instruction to proceed; respect it.
 
-Defaults when the user can't tell you:
+Defaults when env detection is ambiguous:
 - Low-risk / hotfix → prod-only.
 - Medium-risk → staging + prod.
 - High-risk → all available envs (staging + prod + any regions / tenants the deploy system fans out to).
 
 ### 4. Probe telemetry tools and pick one default
 
-Run `bash plan-rollout/scripts/probe_telemetry_tools.sh`. The script lists which telemetry tools are available locally (MCP servers + CLIs). Pick **one** primary using this priority order:
+Run `bash plan-rollout/scripts/probe_telemetry_tools.sh`. The script prints `PRIMARY=<name>`, `PRIMARY_VERIFIED=<yes|no>` (whether the queryable endpoint actually responded), `AVAILABLE=<list>`, and warnings about push-only OTLP endpoints (which are configured but not queryable). Pick the script's `PRIMARY` unless the user explicitly overrides.
 
-1. Datadog (if `Datadog:*` MCP tools or `dog` CLI present).
-2. Honeycomb (if `Honeycomb:*` MCP tools or `hccli` CLI present).
-3. Axiom (if `Axiom:*` MCP tools or `axiom` CLI present).
-4. Prometheus (if a `mcp__prometheus__*` server, `promtool`, or scraped Grafana datasource is reachable).
-5. CloudWatch (if AWS credentials are configured for the right account).
-6. Plain HTTP health-endpoint polling (last-resort fallback for service liveness).
+The priority order encoded in the script:
+
+1. **Datadog** (`Datadog:*` MCP tools or `DD_API_KEY` + `DD_APP_KEY` env vars). Note: `DD_APP_KEY` is required for the *query* path — `DD_API_KEY` alone is ingest-only.
+2. **Honeycomb** (`Honeycomb:*` MCP tools, `HONEYCOMB_API_KEY` env, or `hccli` / `honeycomb` CLI).
+3. **Axiom** (`Axiom:*` MCP tools, `AXIOM_TOKEN` env, or `axiom` CLI).
+4. **Grafana stack** (Tempo + Loki + Prometheus/Mimir as one tier — picked when ≥2 of the three are queryable). Read [references/tempo.md](references/tempo.md) for traces, [references/loki.md](references/loki.md) for logs, [references/prometheus.md](references/prometheus.md) for metrics (also covers Mimir).
+5. **Prometheus alone** if Grafana stack tier didn't trigger but Prometheus is queryable.
+6. **CloudWatch** (AWS credentials configured + `aws sts get-caller-identity` succeeds).
+7. **http-poll** (last-resort fallback for service liveness; uses `kind: shell` indicators).
+
+`PRIMARY_VERIFIED=no` (Datadog / Honeycomb / Axiom / CloudWatch — env-presence-only detection) means the script didn't actually probe the API; the planner verifies on first real query. Push-only OTLP endpoints (e.g. `OTEL_EXPORTER_OTLP_ENDPOINT` set but no Prometheus/Tempo/Loki queryable) are surfaced as warnings — telemetry is being sent somewhere reachable, just not by us.
 
 Do not list every available tool to the user as equal options — pick the priority winner, mention the alternatives in passing if the primary is somehow inadequate. Default-with-escape-hatch beats decision paralysis.
 
-Then read the corresponding `references/<source>.md` for that primary tool's query syntax and example indicator queries. Use the `Server:tool_name` format when referencing MCP tools (e.g. `Datadog:query_metrics`, not `mcp__datadog__query_metrics`).
+Then read the corresponding `references/<source>.md` for that primary tool's query syntax and example indicator queries. Use the `Server:tool_name` format when referencing MCP tools (e.g. `Datadog:query_metrics`, `Grafana:query_logs`, not the legacy `mcp__datadog__query_metrics`).
+
+#### Auth-required MCP servers
+
+When the agent's MCP tool list includes a server whose tools return `requires_authentication` (e.g. an OAuth-gated server like Firetiger MCP, or a freshly-installed Datadog MCP that hasn't completed its OAuth flow), surface a one-line user prompt:
+
+> "The {server-name} MCP server is registered but not authenticated. Run the OAuth flow now, or skip this source?"
+
+If the user declines or skips, drop that source from the priority list and re-pick `PRIMARY` from what's left. Do not silently fail telemetry queries against an unauth'd source — the executor would mark every indicator `INCONCLUSIVE` for the wrong reason.
 
 ### 5. Pick the checkpoint schedule from the tier
 
@@ -150,26 +170,34 @@ This is the MTTR lever. Do not skip it. If you genuinely cannot infer one, ask t
 
 ### 10. Ask the user about ambiguities
 
-Use [assets/ambiguity-questions.md](assets/ambiguity-questions.md) for the canonical wording. Hard rule: never proceed past step 10 on a `high`-tier change with unresolved ambiguity. Common ambiguities:
-- *"Multiple telemetry tools are available — which is canonical for service X?"* (only ask if the priority order from step 4 was inconclusive.)
-- *"What counts as a 'good' request — 2xx only, or 2xx+3xx? Should auth-required 401s count?"*
-- *"Is this change behind a feature flag? If so, what fraction is the rollout?"*
-- *"What's the rollback procedure?"* (only if you couldn't infer it.)
-- *"Default monitoring window for this tier is N — increase or decrease?"*
+**Behaviour by mode:**
+
+- **Interactive mode** — use [assets/ambiguity-questions.md](assets/ambiguity-questions.md) for the canonical wording. Hard rule: never proceed past step 10 on a `high`-tier change with unresolved ambiguity. Common ambiguities:
+  - *"Multiple telemetry tools are available — which is canonical for service X?"* (only ask if the priority order from step 4 was inconclusive.)
+  - *"What counts as a 'good' request — 2xx only, or 2xx+3xx? Should auth-required 401s count?"*
+  - *"Is this change behind a feature flag? If so, what fraction is the rollout?"*
+  - *"What's the rollback procedure?"* (only if you couldn't infer it.)
+  - *"Default monitoring window for this tier is N — increase or decrease?"*
+
+- **Auto mode** (signal: `system-reminder` mentions auto mode is active) — do **not** ask. Use the tier-defaults and log each skipped question as an explicit assumption in the rendered plan section, e.g. *"Assumption (auto mode): treated 2xx as 'good' requests; treated feature flag as fully rolled out; rollback is 'revert PR + redeploy via deploy.yml'; window matches tier-default."* Auto mode is the user's explicit instruction to proceed without blocking; respect it. The user can review the assumptions in the rendered plan and edit before invoking monitor-rollout.
 
 ### 11. Render the plan section + companion check
 
-Run `bash plan-rollout/scripts/render_plan_section.sh` with the gathered fields and the template at [assets/monitoring-plan-template.md](assets/monitoring-plan-template.md). Append the result to the plan file (or to the user's draft response if there is no plan file).
+Run `bash plan-rollout/scripts/render_plan_section.sh` with the gathered fields piped on stdin as JSON. By default it writes the rendered plan to `.rollout/<branch-slug>-monitoring-plan.md` (relative to the git root) and prints the absolute path on stdout's last line. Override the destination with `--out <path>` or `--out -` for stdout.
+
+The conventional location matters: `monitor-rollout`, when invoked without a plan-path argument, auto-discovers `.rollout/*-monitoring-plan.md` in the current repo. Stick to the convention unless the user has an explicit reason to override.
 
 Then run `bash plan-rollout/scripts/check_companion.sh`. If `monitor-rollout` is not installed, print its install hint verbatim. The plan is useless without the executor.
 
-End the section with the activation hand-off line:
+End plan-rollout's response with the activation hand-off line, quoting the absolute path the script printed:
 
 ```
 After the change merges and the deploy is triggered, run:
-  /monitor-rollout <path-to-this-plan-file>
+  /monitor-rollout <absolute path printed by render_plan_section.sh>
 in this same session to monitor it.
 ```
+
+The umbrella `rollout` skill greps for the absolute path on the last line of plan-rollout's output to thread it into the chained `/monitor-rollout` invocation when the user asked for the full lifecycle.
 
 ## Worked examples
 
@@ -191,7 +219,8 @@ Common shortcuts the agent is tempted to take, paired with why they're wrong her
 | *"The user can figure out the rollback path under pressure."* | MTTR is the dominant lever in incident impact (SRE book ch. 13). Asking on-call to invent a rollback at 3am is exactly when the plan should have already named one. One line, written when you're calm. |
 | *"Multiple telemetry tools are available, I'll list them all and let the user pick."* | Decision paralysis. Default-with-escape-hatch beats menu-of-options. The priority order in step 4 exists for this; pick one and note alternatives only in passing. |
 | *"This deploys to one region today, I'll skip the env enumeration."* | The plan must enumerate explicitly, even when the answer is one. The `enumerate_envs.sh` script also surfaces fan-out cases the user may have forgotten (matrix jobs, ApplicationSet generators, Vercel preview targets). |
-| *"This is a high-risk change but the user is in a hurry — I'll skip the ambiguity questions."* | Hard rule: never proceed past step 10 on a high-tier change with unresolved ambiguity. A wrong plan run by the executor wastes the +10m checkpoint and shifts blame later. The questions are the cheapest part of the workflow.
+| *"This is a high-risk change but the user is in a hurry — I'll skip the ambiguity questions."* | Hard rule (interactive mode): never proceed past step 10 on a high-tier change with unresolved ambiguity. A wrong plan run by the executor wastes the +10m checkpoint and shifts blame later. The questions are the cheapest part of the workflow. **Auto-mode exception:** in auto mode, log the assumptions in the rendered plan instead of asking — the user reviews the plan before invoking monitor-rollout. |
+| *"I'll just ask the user even though we're in auto mode."* | Auto mode is the user's explicit instruction to proceed without blocking. Asking stalls the workflow and ignores the explicit signal. Use tier-defaults, log every skipped question as an assumption in the plan, and let the user audit at review time. |
 
 ## Limits
 
