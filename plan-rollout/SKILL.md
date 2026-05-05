@@ -96,9 +96,11 @@ Defaults when env detection is ambiguous:
 
 ### 4. Probe telemetry tools and pick one default
 
-Run `bash plan-rollout/scripts/probe_telemetry_tools.sh`. The script prints `PRIMARY=<name>`, `PRIMARY_VERIFIED=<yes|no>` (whether the queryable endpoint actually responded), `AVAILABLE=<list>`, and warnings about push-only OTLP endpoints (which are configured but not queryable). Pick the script's `PRIMARY` unless the user explicitly overrides.
+Run `bash plan-rollout/scripts/probe_telemetry_tools.sh`. The script prints `PRIMARY=<name>`, `PRIMARY_VERIFIED=<yes|no>` (whether the queryable endpoint actually responded), `AVAILABLE=<list>`, and warnings about push-only OTLP endpoints (which are configured but not queryable). Pick the script's `PRIMARY` unless you have a clear reason to override (see "Overriding the script's pick" below).
 
 The priority order encoded in the script:
+
+**For backend-service targets** (default — when the repo has Go / Rust / Python / etc. backend code):
 
 1. **Datadog** (`Datadog:*` MCP tools or `DD_API_KEY` + `DD_APP_KEY` env vars). Note: `DD_APP_KEY` is required for the *query* path — `DD_API_KEY` alone is ingest-only.
 2. **Honeycomb** (`Honeycomb:*` MCP tools, `HONEYCOMB_API_KEY` env, or `hccli` / `honeycomb` CLI).
@@ -106,11 +108,28 @@ The priority order encoded in the script:
 4. **Grafana stack** (Tempo + Loki + Prometheus/Mimir as one tier — picked when ≥2 of the three are queryable). Read [references/tempo.md](references/tempo.md) for traces, [references/loki.md](references/loki.md) for logs, [references/prometheus.md](references/prometheus.md) for metrics (also covers Mimir).
 5. **Prometheus alone** if Grafana stack tier didn't trigger but Prometheus is queryable.
 6. **CloudWatch** (AWS credentials configured + `aws sts get-caller-identity` succeeds).
-7. **http-poll** (last-resort fallback for service liveness; uses `kind: shell` indicators).
+7. **http-poll** (last-resort fallback; uses `kind: shell` indicators).
 
-`PRIMARY_VERIFIED=no` (Datadog / Honeycomb / Axiom / CloudWatch — env-presence-only detection) means the script didn't actually probe the API; the planner verifies on first real query. Push-only OTLP endpoints (e.g. `OTEL_EXPORTER_OTLP_ENDPOINT` set but no Prometheus/Tempo/Loki queryable) are surfaced as warnings — telemetry is being sent somewhere reachable, just not by us.
+**For static-site / front-end-only targets** (heuristic: package.json has Next/Astro/Remix/Nuxt/SvelteKit AND no `go.mod`/`Cargo.toml`/`pyproject.toml`/`cmd/`/`*.go` at root): the script *demotes* the metrics-backend tier and prefers platform-native CLIs:
 
-Do not list every available tool to the user as equal options — pick the priority winner, mention the alternatives in passing if the primary is somehow inadequate. Default-with-escape-hatch beats decision paralysis.
+1. **vercel-cli** (`vercel whoami` returns a logged-in user) — read [references/vercel-telemetry.md](references/vercel-telemetry.md) for `vercel logs`, `vercel inspect`, `vercel analytics` query patterns.
+2. **netlify-cli** (`netlify status` returns OK).
+3. **wrangler-cli** (`wrangler whoami` returns OK) for Cloudflare Pages.
+4. **http-poll**.
+
+Why the demotion: general-purpose metrics backends (Datadog, Prometheus, Tempo) cover server-side services. Even when reachable from the user's machine, they almost certainly don't have telemetry for a static site — the script's "is the endpoint queryable" check is necessary but not sufficient evidence that a tool covers the deploy target. Picking Prometheus for a marketing-site deploy sends the executor down a rabbit hole looking for metrics that don't exist.
+
+#### Overriding the script's pick
+
+The script can detect tool reachability but not whether a tool's data covers the deploy target. Override `PRIMARY` to `http-poll` (or to a platform CLI) when context contradicts the script's pick:
+
+- **The deploy target's telemetry isn't in the picked backend.** E.g. the script picks Prometheus because the user's machine reaches the org's product Prometheus, but the deploy is a marketing site whose data lives in PostHog/Vercel Analytics, not Prometheus. → Override to `vercel-cli` (if Vercel-hosted) or `http-poll`.
+- **A log drain is configured.** E.g. Vercel → Datadog log drain means Datadog *does* have the deploy target's logs even though it's a static site. → If the user confirms a drain exists, keep the script's metrics-backend pick. If the user is unsure, ask: *"I see Datadog is available — do you have a Vercel→Datadog log drain configured for this project? If yes I'll use Datadog; otherwise I'll fall back to vercel-cli."*
+- **The script's PRIMARY_VERIFIED=no.** Env-presence-only detection (Datadog / Honeycomb / Axiom / CloudWatch). Try a single sentinel query before committing; if it fails with auth or not-found, fall back.
+
+Push-only OTLP endpoints (e.g. `OTEL_EXPORTER_OTLP_ENDPOINT` set but no Prometheus/Tempo/Loki queryable) are surfaced as warnings — telemetry is being sent somewhere reachable, just not by us. Tell the user explicitly so they can either configure a queryable surface or accept that we'll fall back to `http-poll`.
+
+Do not list every available tool to the user as equal options — pick the priority winner (or your contextual override), mention the alternatives in passing if the primary is somehow inadequate. Default-with-escape-hatch beats decision paralysis.
 
 Then read the corresponding `references/<source>.md` for that primary tool's query syntax and example indicator queries. Use the `Server:tool_name` format when referencing MCP tools (e.g. `Datadog:query_metrics`, `Grafana:query_logs`, not the legacy `mcp__datadog__query_metrics`).
 

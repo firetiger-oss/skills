@@ -106,7 +106,14 @@ done
 # Heuristic: if nothing detected so far AND package.json exists with a known
 # JS-meta-framework AND no GH Actions deploy job AND no IaC dir, the repo is
 # probably hosted via a git-integration deploy (Vercel/Netlify GitHub app, etc).
-# This is a hint, not a definitive answer — the agent should confirm with user.
+#
+# When the Vercel CLI is installed AND authenticated, we can be more specific:
+# emit `vercel:production` + `vercel:preview` directly instead of the vague
+# `git-integration:likely-vercel-or-netlify` line. The user's repo doesn't
+# need `.vercel/` checked in for this — `vercel ls` works against the logged-
+# in user's account regardless. We use `vercel whoami` (cheap, ~1s, no
+# project-level state needed) to confirm authentication; `timeout 3` guards
+# against hangs in case of network trouble.
 if [ ! -s "$TMP_OUT" ] && [ -f "$ROOT/package.json" ]; then
     if grep -qE '"(next|astro|@remix-run/[^"]+|nuxt|@sveltejs/kit)"\s*:' "$ROOT/package.json" 2>/dev/null; then
         has_gh_deploy=0
@@ -118,7 +125,13 @@ if [ ! -s "$TMP_OUT" ] && [ -f "$ROOT/package.json" ]; then
             [ -d "$d" ] && has_iac=1
         done
         if [ "$has_gh_deploy" = "0" ] && [ "$has_iac" = "0" ]; then
-            emit "git-integration:likely-vercel-or-netlify"
+            # Try Vercel CLI first — most specific
+            if command -v vercel >/dev/null 2>&1 && timeout 3 vercel whoami >/dev/null 2>&1; then
+                emit "vercel:production"
+                emit "vercel:preview"
+            else
+                emit "git-integration:likely-vercel-or-netlify"
+            fi
         fi
     fi
 fi

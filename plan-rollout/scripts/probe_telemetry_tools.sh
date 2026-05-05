@@ -94,6 +94,24 @@ queryable_cloudwatch() {
     command -v aws >/dev/null 2>&1 && aws sts get-caller-identity >/dev/null 2>&1
 }
 
+# --- Platform-native CLIs (for Vercel / Netlify / Cloudflare Pages targets) ---
+# These are the right primary telemetry source for static-site / serverless
+# deploys on those platforms — the platform's own log + analytics surface
+# carries the request-time data that no general-purpose metrics backend
+# (Datadog, Prometheus, etc.) sees unless the team has a log drain wired up.
+
+queryable_vercel_cli() {
+    command -v vercel >/dev/null 2>&1 && timeout 3 vercel whoami >/dev/null 2>&1
+}
+
+queryable_netlify_cli() {
+    command -v netlify >/dev/null 2>&1 && timeout 3 netlify status >/dev/null 2>&1
+}
+
+queryable_wrangler_cli() {
+    command -v wrangler >/dev/null 2>&1 && timeout 3 wrangler whoami >/dev/null 2>&1
+}
+
 # Push-only endpoint detection — these mean telemetry is *being sent* but we
 # can't query it. Worth surfacing to the user so they know the data is going
 # somewhere reachable, just not by us.
@@ -152,6 +170,9 @@ probe_one tempo queryable_tempo
 probe_one loki queryable_loki
 probe_one prometheus queryable_prometheus_or_mimir
 probe_one cloudwatch queryable_cloudwatch
+probe_one vercel-cli queryable_vercel_cli
+probe_one netlify-cli queryable_netlify_cli
+probe_one wrangler-cli queryable_wrangler_cli
 
 # Detect a Grafana-stack tier: two or more of {tempo, loki, prometheus} present.
 gs_count=0
@@ -163,12 +184,66 @@ if [ "${#available[@]}" -gt 0 ]; then
     done
 fi
 
+# Deploy-target heuristic: is this a static-site / front-end-only repo?
+# Signal: package.json with a known JS-meta-framework AND no obvious backend
+# code (no go.mod, no Cargo.toml, no python entry points, no cmd/, no Go
+# files at the root). When true, metrics backends like Prometheus/Tempo
+# almost certainly don't carry telemetry for the deploy target — they cover
+# server-side services, not static sites. Demote them in the priority
+# selection so PRIMARY defaults to http-poll for this repo shape.
+#
+# Even when demoted, the backends stay in AVAILABLE so the agent retains
+# the option to override (e.g. if the static site does emit RUM metrics
+# into Prometheus via a custom collector).
+is_static_site_target=0
+ROOT="${ROOT:-.}"
+if [ -f "$ROOT/package.json" ] && grep -qE '"(next|astro|@remix-run/[^"]+|nuxt|@sveltejs/kit)"\s*:' "$ROOT/package.json" 2>/dev/null; then
+    has_backend=0
+    [ -f "$ROOT/go.mod" ] && has_backend=1
+    [ -f "$ROOT/Cargo.toml" ] && has_backend=1
+    [ -f "$ROOT/pyproject.toml" ] && has_backend=1
+    [ -f "$ROOT/setup.py" ] && has_backend=1
+    [ -f "$ROOT/Gemfile" ] && has_backend=1
+    [ -f "$ROOT/pom.xml" ] && has_backend=1
+    [ -f "$ROOT/build.gradle" ] && has_backend=1
+    [ -d "$ROOT/cmd" ] && has_backend=1
+    if compgen -G "$ROOT/*.go" >/dev/null 2>&1; then has_backend=1; fi
+    if [ "$has_backend" = "0" ]; then
+        is_static_site_target=1
+    fi
+fi
+
 # Pick PRIMARY by priority order
 primary=""
 primary_verified="no"
 priority_lookup() {
     # Re-derive priority pick from available list. Order:
     # datadog > honeycomb > axiom > grafana-stack > prometheus (alone) > cloudwatch > http-poll
+    #
+    # Special case: when the deploy target is a static site / front-end-only,
+    # general-purpose metrics backends (Datadog/Prometheus/Tempo/Loki) almost
+    # certainly don't have telemetry for the deploy target — they cover
+    # backend services, not static sites. Prefer the platform's own
+    # observability surface (Vercel CLI logs+analytics, Netlify CLI logs,
+    # Cloudflare wrangler tail) over them, falling back to http-poll.
+    #
+    # Caveat: if the team has wired a log drain (e.g. Vercel → Datadog), the
+    # drain destination IS a valid source — but this script can't auto-detect
+    # that. The agent should ask the user when in doubt; see SKILL.md step 4.
+    if [ "$is_static_site_target" = "1" ]; then
+        for p in vercel-cli netlify-cli wrangler-cli; do
+            for i in "${!available[@]}"; do
+                if [ "${available[$i]}" = "$p" ]; then
+                    primary="$p"
+                    primary_verified="yes"
+                    return
+                fi
+            done
+        done
+        primary="http-poll"
+        primary_verified="yes"
+        return
+    fi
     if [ "${#available[@]}" -gt 0 ]; then
         for p in datadog honeycomb axiom; do
             for i in "${!available[@]}"; do
