@@ -64,9 +64,11 @@ Details in [references/checkpoint-loop.md](references/checkpoint-loop.md).
 
 ## Workflow
 
-Copy this checklist into the response and tick items off as the monitoring window progresses. Marker conventions: `~~[x]~~` done (strikethrough — greyed-out, less important because done) · `**[~] N. ... ← in progress**` for the active step (bolded with the `← in progress` suffix) · `**[!] N. ... ← blocked: <reason>**` for a blocked step (e.g. telemetry MCP unreachable) · `[ ]` pending. The visual hierarchy: done fades back, current pops, pending sits at default weight; the `[!]` marker tells the user something needs attention without stopping the run.
+Copy this checklist into the response and tick items off as the monitoring window progresses. Marker conventions: `[x]` done · `**[~] N. ... ← in progress**` for the active step (bolded with the `← in progress` suffix) · `**[!] N. ... ← blocked: <reason>**` for a blocked step (e.g. telemetry MCP unreachable) · `[ ]` pending. The bracket markers carry the state; bold makes the active step pop.
 
-**Render the checklist as a normal markdown list — NOT wrapped in a code block** (` ``` `…` ``` `). Code blocks render their contents as monospaced literal text and won't interpret `**bold**` / `~~strikethrough~~` markers, defeating the visual hierarchy. The example below is shown as-is, the way it should appear in the response:
+(An earlier convention used `~~strikethrough~~` to grey out done items, but Claude Code's markdown renderer doesn't interpret strikethrough reliably — the `~~` markers show literally. Stick with bold for in-progress only; the `[x]` vs `[ ]` brackets carry the done/pending distinction visually.)
+
+**Render the checklist as a normal markdown list — NOT wrapped in a code block** (` ``` `…` ``` `). Code blocks render their contents as monospaced literal text and won't interpret `**bold**` markers, defeating the visual hierarchy. The example below is shown as-is, the way it should appear in the response:
 
 monitor-rollout progress:
 - [ ] 1. Parsed plan (tier, indicators, schedule, deploy-detection per env, rollback)
