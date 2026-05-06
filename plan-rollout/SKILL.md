@@ -141,6 +141,35 @@ When the agent's MCP tool list includes a server whose tools return `requires_au
 
 If the user declines or skips, drop that source from the priority list and re-pick `PRIMARY` from what's left. Do not silently fail telemetry queries against an unauth'd source — the executor would mark every indicator `INCONCLUSIVE` for the wrong reason.
 
+#### When the script reports a telemetry gap
+
+When the probe script's output contains `TELEMETRY_GAP=yes`, the user has no telemetry backend visible from this session AND the deploy target is a backend service (not a static site). `http-poll` alone is thin for backend services — you'd be writing a plan with request-path probes only, no error-rate / latency-tail / saturation visibility. Surface the gap before continuing.
+
+Read [references/telemetry-gap.md](references/telemetry-gap.md) for the full per-vendor MCP install commands, per-language instrumentation hints, and the plan-mode handoff seed.
+
+**Behaviour by mode:**
+
+- **Interactive mode** — tell the user the gap exists and offer two escape hatches:
+  > "I don't see any telemetry backend reachable for this project. The plan would use HTTP probes only — that's a thin signal for a backend service. Two ways to upgrade before we continue:
+  >
+  > 1. **Connect an MCP server** for an existing telemetry vendor (Datadog / Honeycomb / Axiom / Grafana / Sentry). Useful if your service already emits telemetry but the agent can't see it.
+  > 2. **Instrument the code** — pivot to plan mode and add OpenTelemetry / structured logging. Useful if the service has no observability yet.
+  >
+  > Or continue with `http-poll` and I'll log the gap as an explicit assumption in the plan."
+
+  If the script also reported push-only OTLP endpoints, bias the suggestion toward the matching vendor (e.g. `api.honeycomb.io` → suggest the Honeycomb MCP first). The decision tree in `references/telemetry-gap.md` has the full host-to-vendor mapping.
+
+  If the user picks **option 1**, print the install command from `references/telemetry-gap.md`, wait for the user to confirm install, then re-run `bash plan-rollout/scripts/probe_telemetry_tools.sh` and continue with the new PRIMARY.
+
+  If the user picks **option 2**, call `EnterPlanMode` with the seed plan from `references/telemetry-gap.md` (under "Plan-mode handoff seed"). The session pivots to instrumentation; the user returns to `/plan-rollout` after the instrumentation deploys.
+
+  If the user declines both, continue with http-poll and log the assumption in the rendered plan (see below).
+
+- **Auto mode** — skip the prompt. Continue with http-poll. Log the assumption verbatim in the rendered plan section:
+  > **Assumption (auto mode):** no telemetry backend reachable; plan uses http-poll only — request-path indicators only, no error-rate / latency-tail / saturation visibility. Connect an MCP server or instrument the code to upgrade telemetry on the next deploy. See `plan-rollout/references/telemetry-gap.md`.
+
+  Auto mode is the user's explicit instruction to proceed without blocking; respect it and surface the gap in the artifact rather than at the prompt.
+
 ### 5. Pick the checkpoint schedule from the tier
 
 Read [references/checkpoint-schedule.md](references/checkpoint-schedule.md). Use the tier→schedule mapping there verbatim. Do not invent new schedules unless the user explicitly overrides — the schedule shape is calibrated against production data and ad-hoc tweaks are rarely better.

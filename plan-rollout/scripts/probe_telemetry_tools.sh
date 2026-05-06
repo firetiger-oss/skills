@@ -278,9 +278,21 @@ priority_lookup
 # Always include http-poll in available (last-resort fallback)
 available+=("http-poll")
 
+# Telemetry-gap signal: PRIMARY=http-poll on a non-static-site target means
+# nothing better was reachable — the user has no telemetry backend visible
+# from this session. Static-site targets correctly land on http-poll (or
+# vercel-cli/netlify-cli/wrangler-cli) so they are not "gaps" — only flag
+# when a backend service has nothing better than http-poll.
+if [ "$primary" = "http-poll" ] && [ "$is_static_site_target" = "0" ]; then
+    telemetry_gap="yes"
+else
+    telemetry_gap="no"
+fi
+
 echo "PRIMARY=$primary"
 echo "PRIMARY_VERIFIED=$primary_verified"
 echo "AVAILABLE=${available[*]}"
+echo "TELEMETRY_GAP=$telemetry_gap"
 
 # Push-only warnings
 po=$(push_only_endpoints)
