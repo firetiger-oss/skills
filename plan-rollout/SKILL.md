@@ -1,7 +1,7 @@
 ---
 name: plan-rollout
 description: "Adds a multi-environment change-monitoring section to the agent's plan: enumerates target environments (staging, prod, regions, BYOC tenants), picks SLIs (golden signals + intended-effect + business-outcome) per env or shared, queries 24h baselines, sets baseline-referenced thresholds, and chooses a checkpoint schedule based on risk tier. Use when the user is planning a code change that will be deployed, preparing a rollout, asking how to monitor a release, doing post-deploy validation prep, planning a canary, or wants production watched after merging — even when they don't say 'monitoring plan'. Anchored on Google SRE book vocabulary (golden signals, SLI, error budget, blast radius). Companion to monitor-rollout."
-argument-hint: "[optional: paste of the change diff, PR url, or --merge-sha <sha> for post-merge-no-plan]"
+argument-hint: "[optional: paste of the change diff, PR url, --merge-sha <sha> for post-merge-no-plan, --env <env> to scope to a single env]"
 ---
 
 # plan-rollout
@@ -75,6 +75,10 @@ Quote the file paths you considered — the agent and the user both benefit from
 Read [references/risk-rubric.md](references/risk-rubric.md) and pick `low | medium | high`. State the tier and one sentence of reasoning. The tier drives step 5; do not skip the reasoning.
 
 ### 3. Enumerate target environments
+
+**Caller-provided env (`--env <env>`):** if the orchestrator (or the user) invoked plan-rollout with `--env <env>`, use that single env directly and skip the enumeration step. Validate the name against `enumerate_envs.sh`'s output for sanity (warn if not found, but proceed — the orchestrator already asked the user). Single-env plans omit multi-env multiplexing in the rendered Indicators table; the executor still uses per-env evidence-discipline at runtime.
+
+**No `--env` given (multi-env enumeration):**
 
 Run `bash plan-rollout/scripts/enumerate_envs.sh` from inside the repo being changed. The script inspects deploy config:
 - `.github/workflows/*.y*ml` for matrix jobs and per-environment workflows.

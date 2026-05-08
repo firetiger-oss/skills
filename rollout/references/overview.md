@@ -72,6 +72,17 @@ The hint is not a checklist of options; it's the call-the-shot the planner makes
 
 ## Where to go next
 
-- For the plan/monitor decision tree, read [decision-tree.md](decision-tree.md).
+- For the four invocation forms (`/rollout`, `/rollout to <env>`, `/rollout PR <num>`, `/rollout PR <num> to <env>`), read [invocation-forms.md](invocation-forms.md).
+- For the phase-by-phase decision logic, read [decision-tree.md](decision-tree.md).
 - For known limits of the local skill, read [limitations.md](limitations.md).
-- For the methodology applied to a specific change, invoke `plan-rollout` against a diff or PR url.
+- For the methodology applied to a specific change without orchestration (plan-only or monitor-only), invoke `/plan-rollout` or `/monitor-rollout` directly — they still work standalone.
+
+## How `/rollout` orchestrates vs. `/plan-rollout` and `/monitor-rollout` directly
+
+`/rollout` is the **orchestrator**: it parses the user's intent, resolves whether the change is pre-merge / merged-not-deployed / deployed, drives the plan + merge + deploy + monitor lifecycle end-to-end, and gates every destructive action (merge, manual deploy trigger) on explicit user consent.
+
+`/plan-rollout` is the **planner**: it writes the monitoring plan section. The orchestrator delegates to it.
+
+`/monitor-rollout` is the **executor**: it runs the plan in the foreground of the session. The orchestrator delegates to it.
+
+Power users who only want one phase (write a plan but don't ship yet, or watch a deploy that someone else triggered) invoke the specialised skills directly. The orchestrator is additive — same workers, more guidance.
