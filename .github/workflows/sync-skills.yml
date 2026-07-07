@@ -1,0 +1,144 @@
+name: Sync skills to plugins
+
+# Author skills here, tag, and this opens/updates a PR in each consumer plugin
+# repo with the refreshed skills, stamped with the source tag. Consumers update
+# deliberately by merging.
+#
+# Triggers:
+#   - push of a version tag (v*)         -> opens/updates real PRs
+#   - manual dispatch                    -> dry-run by default (diff only); set
+#                                           dry_run=false to open PRs from a ref
+#
+# Setup (one manual step): add a repo secret SKILLS_SYNC_TOKEN — a fine-grained
+# PAT or GitHub App token with contents:write + pull_requests:write on
+# firetiger-oss/cursor-plugin and firetiger-oss/claude-plugin. Without it the
+# job runs dry (diff only) and skips PR creation.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Tag/branch/SHA of this repo to sync from"
+        required: false
+        default: ""
+      dry_run:
+        description: "Only show the diff; do not open PRs"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - repo: firetiger-oss/cursor-plugin
+            host: cursor
+          - repo: firetiger-oss/claude-plugin
+            host: claude
+    steps:
+      - name: Resolve source ref and tag
+        id: src
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "push" ]; then
+            ref="${{ github.ref_name }}"        # the pushed tag
+          else
+            ref="${{ inputs.ref }}"
+            [ -n "$ref" ] || ref="${{ github.ref_name }}"
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "tag=$ref" >> "$GITHUB_OUTPUT"
+          echo "Syncing from ${{ github.repository }}@$ref"
+
+      - name: Checkout canonical skills (source)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.src.outputs.ref }}
+          path: source
+
+      - name: Decide whether we can open PRs
+        id: mode
+        env:
+          TOKEN: ${{ secrets.SKILLS_SYNC_TOKEN }}
+        run: |
+          set -euo pipefail
+          dry="${{ inputs.dry_run }}"
+          # Default push events to "open PRs"; dispatch honors the input.
+          if [ "${{ github.event_name }}" = "push" ]; then dry="false"; fi
+          if [ -z "$TOKEN" ]; then
+            echo "::warning ::SKILLS_SYNC_TOKEN not set — running dry (diff only)."
+            dry="true"
+          fi
+          echo "dry_run=$dry" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout consumer plugin (${{ matrix.repo }})
+        if: steps.mode.outputs.dry_run == 'false'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ matrix.repo }}
+          token: ${{ secrets.SKILLS_SYNC_TOKEN }}
+          path: consumer
+
+      - name: Checkout consumer plugin read-only (dry-run)
+        if: steps.mode.outputs.dry_run == 'true'
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ matrix.repo }}
+          path: consumer
+
+      - name: Ensure consumer dir exists (dry-run without token)
+        run: mkdir -p consumer
+
+      - name: Run sync
+        run: |
+          source/scripts/sync-skills.sh \
+            --host "${{ matrix.host }}" \
+            --source "$GITHUB_WORKSPACE/source" \
+            --target "$GITHUB_WORKSPACE/consumer" \
+            --tag "${{ steps.src.outputs.tag }}"
+
+      - name: Show diff
+        working-directory: consumer
+        run: |
+          git add -A 2>/dev/null || true
+          echo "### ${{ matrix.repo }} — sync diff (${{ steps.src.outputs.tag }})" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          git --no-pager diff --cached --stat 2>/dev/null | tee -a "$GITHUB_STEP_SUMMARY" || echo "(no git repo)" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          # Unstage so create-pull-request stages cleanly.
+          git reset -q 2>/dev/null || true
+
+      - name: Open / update PR in ${{ matrix.repo }}
+        if: steps.mode.outputs.dry_run == 'false'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.SKILLS_SYNC_TOKEN }}
+          path: consumer
+          branch: firetiger-skills-sync
+          base: main
+          # NB: firetiger-oss/cursor-plugin CI rejects the word "Claude" in
+          # commit messages — keep this message and trailer free of it.
+          commit-message: "chore: sync Firetiger skills from ${{ steps.src.outputs.tag }}"
+          committer: "firetiger-bot <bot@firetiger.com>"
+          author: "firetiger-bot <bot@firetiger.com>"
+          title: "Sync Firetiger skills from ${{ steps.src.outputs.tag }}"
+          body: |
+            Automated skills sync from
+            [`${{ github.repository }}`](https://github.com/${{ github.repository }}) at
+            **${{ steps.src.outputs.tag }}**.
+
+            Skills are authored once in the canonical repo and vendored here — do
+            not edit `skills/` in this repo. To update, merge this PR.
+
+            The vendored copy is stamped in `skills/.firetiger-skills-source` and
+            guarded by the `firetiger-skills-drift` workflow (installed by this
+            sync), which fails CI if the vendored skills are edited downstream.
+          delete-branch: false

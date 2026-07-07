@@ -1,0 +1,45 @@
+# Installed by firetiger-oss/skills · scripts/sync-skills.sh — do not edit here.
+# Fails CI if the vendored Firetiger skills under skills/ were edited downstream
+# instead of upstream in firetiger-oss/skills. Update by merging the sync PR.
+name: Firetiger skills drift check
+
+on:
+  push:
+    branches: ["**"]
+    paths: ["skills/**"]
+  pull_request:
+    paths: ["skills/**"]
+  workflow_dispatch:
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this plugin
+        uses: actions/checkout@v4
+
+      - name: Read stamped source tag
+        id: stamp
+        run: |
+          set -euo pipefail
+          stamp="skills/.firetiger-skills-source"
+          if [ ! -f "$stamp" ]; then
+            echo "::error ::Missing $stamp — skills were not installed via sync-skills.sh."
+            exit 1
+          fi
+          tag="$(grep -E '^tag=' "$stamp" | head -n1 | cut -d= -f2-)"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Vendored skills stamped from firetiger-oss/skills@$tag"
+
+      - name: Checkout canonical skills at stamped tag
+        uses: actions/checkout@v4
+        with:
+          repository: firetiger-oss/skills
+          ref: ${{ steps.stamp.outputs.tag }}
+          path: .firetiger-canonical
+
+      - name: Check for drift
+        run: |
+          .firetiger-canonical/scripts/check-drift.sh \
+            --target "$GITHUB_WORKSPACE" \
+            --canonical "$GITHUB_WORKSPACE/.firetiger-canonical"
