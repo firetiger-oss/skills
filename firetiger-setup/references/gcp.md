@@ -1,7 +1,8 @@
 # GCP Cloud Logging
 
-Forward GCP Cloud Logging to Firetiger via a logging sink → Pub/Sub topic → Cloud Function forwarder. Uses the
-Step 1 credentials: `$INGEST_URL`, `$USERNAME`, `$PASSWORD`. Requires `which gcloud` and a chosen `$REGION`.
+Forward GCP Cloud Logging to Firetiger via a logging sink → Pub/Sub topic → Cloud Function forwarder. The
+ingest endpoint is `https://ingest.cloud.firetiger.com`; use the Step 1 credentials `$USERNAME` / `$PASSWORD`.
+Requires `which gcloud` and a chosen `$REGION`.
 
 ```bash
 # Current project
@@ -28,7 +29,7 @@ gcloud functions deploy firetiger-cloud-logs-forwarder \
   --gen2 --runtime=python313 \
   --trigger-topic=firetiger-cloud-logs \
   --entry-point=process_log_entry \
-  --set-env-vars="FT_EXPORTER_ENDPOINT=$INGEST_URL,FT_EXPORTER_BASIC_AUTH_USERNAME=$USERNAME,FT_EXPORTER_BASIC_AUTH_PASSWORD=$PASSWORD" \
+  --set-env-vars="FT_EXPORTER_ENDPOINT=https://ingest.cloud.firetiger.com,FT_EXPORTER_BASIC_AUTH_USERNAME=$USERNAME,FT_EXPORTER_BASIC_AUTH_PASSWORD=$PASSWORD" \
   --source=gs://firetiger-public/ingest/gcp/cloud-logging/function.zip \
   --region=$REGION
 ```
@@ -41,7 +42,7 @@ command to scope which logs are exported.
 Firetiger accepts GCP logs two ways:
 - **Pub/Sub pull** — the forwarder function above, driven by the logging sink → Pub/Sub topic (shown here).
 - **HTTP push** — a Log Router sink or Cloud Function can POST Cloud Logging `LogEntry` payloads directly to
-  `$INGEST_URL/gcp/cloud-logging` with the Basic auth header, skipping the pull subscriber.
+  `https://ingest.cloud.firetiger.com/gcp/cloud-logging` with the Basic auth header, skipping the pull subscriber.
 
 Choose HTTP push for the simplest setup; use the Pub/Sub path when you want buffering/replay in front of
 Firetiger. For app traces/metrics, add the OTLP SDK (`firetiger-instrument`).

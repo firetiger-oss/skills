@@ -1,15 +1,15 @@
 # Telemetry ingest sources
 
-Every way to get telemetry into Firetiger. All endpoints are paths on the ingest host from
-`get_ingest_credentials` and use **HTTP Basic auth** (`Authorization: Basic base64(username:password)`), except
-the self-authenticating webhooks noted below. Everything lands in Apache Iceberg tables you can then query with
-`firetiger-query`.
+Every way to get telemetry into Firetiger. All endpoints are paths under the ingest host
+`https://ingest.cloud.firetiger.com` and use **HTTP Basic auth** (`Authorization: Basic base64(username:password)`,
+the username/password from `get_ingest_credentials`), except the self-authenticating webhooks noted below.
+Everything lands in Apache Iceberg tables you can then query with `firetiger-query`.
 
 ## OpenTelemetry (OTLP) — the default
 
-Signals: logs, metrics, traces. Endpoints: `/v1/traces`, `/v1/logs`, `/v1/metrics` (HTTP), plus OTLP gRPC on
-`:443`. Point any OTEL SDK or Collector at the ingest endpoint with the Basic auth header. For SDK setup per
-language, use the **`firetiger-instrument`** skill.
+Signals: logs, metrics, traces. Endpoints: `https://ingest.cloud.firetiger.com/v1/traces`, `/v1/logs`,
+`/v1/metrics` (HTTP), plus OTLP gRPC on `:443`. Point any OTEL SDK or Collector at the ingest endpoint with the
+Basic auth header. For SDK setup per language, use the **`firetiger-instrument`** skill.
 
 ## Platform log/trace drains
 

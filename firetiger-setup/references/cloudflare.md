@@ -1,7 +1,8 @@
 # Cloudflare Workers observability
 
-Send Cloudflare Workers traces and logs to Firetiger via Workers observability destinations. Uses the Step 1
-credentials: `$INGEST_URL`, `$AUTH_HEADER` = `base64(username:password)`. Requires `which wrangler`.
+Send Cloudflare Workers traces and logs to Firetiger via Workers observability destinations. The ingest
+endpoint is `https://ingest.cloud.firetiger.com`; auth uses the Step 1 credentials as `$AUTH_HEADER` =
+`base64(username:password)`. Requires `which wrangler`.
 
 ## Prerequisites
 
@@ -15,14 +16,14 @@ credentials: `$INGEST_URL`, `$AUTH_HEADER` = `base64(username:password)`. Requir
 curl -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/observability/destinations" \
   -H "X-Auth-Email: $CF_EMAIL" -H "X-Auth-Key: $CF_API_KEY" -H "Content-Type: application/json" \
   -d '{"name":"firetiger-traces","enabled":true,"configuration":{"type":"logpush",
-       "logpushDataset":"opentelemetry-traces","url":"'$INGEST_URL'/v1/traces",
+       "logpushDataset":"opentelemetry-traces","url":"https://ingest.cloud.firetiger.com/v1/traces",
        "headers":{"Authorization":"Basic '$AUTH_HEADER'"}}}'
 
 # Logs
 curl -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/observability/destinations" \
   -H "X-Auth-Email: $CF_EMAIL" -H "X-Auth-Key: $CF_API_KEY" -H "Content-Type: application/json" \
   -d '{"name":"firetiger-logs","enabled":true,"configuration":{"type":"logpush",
-       "logpushDataset":"opentelemetry-logs","url":"'$INGEST_URL'/v1/logs",
+       "logpushDataset":"opentelemetry-logs","url":"https://ingest.cloud.firetiger.com/v1/logs",
        "headers":{"Authorization":"Basic '$AUTH_HEADER'"}}}'
 ```
 
@@ -50,7 +51,7 @@ wrangler deploy
 
 For zone-level HTTP request logs (not just Workers), create a **Logpush** job pointing at Firetiger. Firetiger
 accepts Logpush three ways:
-- **Direct HTTP** → `$INGEST_URL/cloudflare/logs` (or `/cloudflare/logpush/http_requests`).
+- **Direct HTTP** → `https://ingest.cloud.firetiger.com/cloudflare/logs` (or `/cloudflare/logpush/http_requests`).
 - **Via S3** → `/cloudflare/logpush/s3` (S3 + EventBridge object notifications).
 - **Via GCS** → `/cloudflare/logpush/gcs` (GCS + Pub/Sub notifications).
 

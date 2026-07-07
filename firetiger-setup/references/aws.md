@@ -1,8 +1,8 @@
 # AWS CloudWatch logs
 
-Forward CloudWatch logs to Firetiger by deploying the onboarding CloudFormation stack (ingest + IAM role).
-Uses the Step 1 credentials: `$INGEST_URL`, `$USERNAME`, `$PASSWORD`. Requires `which aws` and a chosen
-`$REGION`.
+Forward CloudWatch logs to Firetiger by deploying the onboarding CloudFormation stack (ingest + IAM role). The
+ingest endpoint is `https://ingest.cloud.firetiger.com`; use the Step 1 credentials `$USERNAME` / `$PASSWORD`.
+Requires `which aws` and a chosen `$REGION`.
 
 ## Deploy the onboarding stack
 
@@ -11,7 +11,7 @@ aws cloudformation create-stack \
   --stack-name firetiger-cloudwatch-logs \
   --template-url https://firetiger-public-$REGION.s3.$REGION.amazonaws.com/ingest/aws/cloudwatch/logs/ingest-and-iam-onboarding.yaml \
   --parameters \
-    ParameterKey=FiretigerEndpoint,ParameterValue=$INGEST_URL \
+    ParameterKey=FiretigerEndpoint,ParameterValue=https://ingest.cloud.firetiger.com \
     ParameterKey=FiretigerUsername,ParameterValue=$USERNAME \
     ParameterKey=FiretigerPassword,ParameterValue=$PASSWORD \
     ParameterKey=FiretigerExternalId,ParameterValue=$(uuidgen) \
@@ -33,7 +33,7 @@ cross-account role in the Firetiger dashboard if prompted.
 ## Other AWS sources
 
 CloudWatch Logs is the common case, but Firetiger ingests several other AWS streams (all Basic auth on the
-`$INGEST_URL` host, typically delivered via **Kinesis Firehose**, which also supports a dedicated Firehose
+`https://ingest.cloud.firetiger.com` host, typically delivered via **Kinesis Firehose**, which also supports a dedicated Firehose
 auth mode):
 
 | Source | Endpoint | Delivery |

@@ -1,7 +1,8 @@
 # Vercel log & trace drains
 
-Forward Vercel logs and traces to Firetiger via the Vercel API. Uses the Step 1 credentials: `$INGEST_URL`,
-and `$AUTH_HEADER` = `base64(username:password)`.
+Forward Vercel logs and traces to Firetiger via the Vercel API. The ingest endpoint is
+`https://ingest.cloud.firetiger.com`; auth uses the Step 1 credentials as `$AUTH_HEADER` =
+`base64(username:password)`.
 
 ## Prerequisites
 
@@ -23,7 +24,7 @@ curl -X POST "https://api.vercel.com/v1/drains" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"name":"Send logs to Firetiger","projects":"some","projectIds":["'$PROJECT_ID'"],
        "schemas":{"log":{"version":"v1"}},
-       "delivery":{"type":"http","endpoint":"'$INGEST_URL'/vercel/logs","encoding":"json",
+       "delivery":{"type":"http","endpoint":"https://ingest.cloud.firetiger.com/vercel/logs","encoding":"json",
                    "headers":{"Authorization":"Basic '$AUTH_HEADER'"}},
        "filter":{"version":"v2","filter":{"type":"basic","log":{"sources":["lambda","edge"]},
                  "deployment":{"environments":["production"]}}}}'
@@ -36,7 +37,7 @@ curl -X POST "https://api.vercel.com/v1/drains" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"name":"Send traces to Firetiger","projects":"some","projectIds":["'$PROJECT_ID'"],
        "schemas":{"trace":{"version":"v1"}},
-       "delivery":{"type":"otlphttp","endpoint":{"traces":"'$INGEST_URL'/v1/traces"},"encoding":"json",
+       "delivery":{"type":"otlphttp","endpoint":{"traces":"https://ingest.cloud.firetiger.com/v1/traces"},"encoding":"json",
                    "headers":{"Authorization":"Basic '$AUTH_HEADER'"}}}'
 ```
 

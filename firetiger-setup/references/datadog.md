@@ -21,7 +21,7 @@ connection config. This needs no changes to your Datadog setup at all.
 If the project already runs the **Datadog Agent**, repoint it at Firetiger's Datadog-compatible ingest to send
 logs, metrics, and traces with almost no code change (uses the Step 1 ingest credentials).
 
-Firetiger accepts Datadog-agent traffic on these endpoints (`$INGEST_URL` host):
+Firetiger accepts Datadog-agent traffic at `https://ingest.cloud.firetiger.com` on these paths:
 
 | Signal | Endpoint(s) |
 |--------|-------------|
@@ -38,21 +38,21 @@ Set the base URL (and API key) in `datadog.yaml` or via environment:
 
 ```yaml
 # datadog.yaml
-dd_url: "https://<ingest-host>/datadog"        # metrics
+dd_url: "https://ingest.cloud.firetiger.com/datadog"        # metrics
 logs_config:
-  logs_dd_url: "<ingest-host>:443"
+  logs_dd_url: "ingest.cloud.firetiger.com:443"
   use_http: true
 apm_config:
-  apm_dd_url: "https://<ingest-host>/datadog"  # traces
+  apm_dd_url: "https://ingest.cloud.firetiger.com/datadog"  # traces
 api_key: "<firetiger-issued-key>"
 ```
 
 Or with environment variables:
 
 ```bash
-DD_DD_URL="https://<ingest-host>/datadog"
-DD_APM_DD_URL="https://<ingest-host>/datadog"
-DD_LOGS_CONFIG_LOGS_DD_URL="<ingest-host>:443"
+DD_DD_URL="https://ingest.cloud.firetiger.com/datadog"
+DD_APM_DD_URL="https://ingest.cloud.firetiger.com/datadog"
+DD_LOGS_CONFIG_LOGS_DD_URL="ingest.cloud.firetiger.com:443"
 DD_API_KEY="<firetiger-issued-key>"
 ```
 

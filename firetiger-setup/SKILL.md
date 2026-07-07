@@ -64,9 +64,10 @@ Explore the codebase to find telemetry sources and services Firetiger can connec
 
 ## Step 4 — Wire up telemetry ingestion
 
-Pick the path that matches what you detected. All ingest is **HTTP Basic auth** using the Step 1 credentials
-(`$INGEST_URL`, `$USERNAME`, `$PASSWORD`, `$AUTH_HEADER = base64(user:pass)`). The full source menu — with
-endpoint paths — is in **[references/ingest-sources.md](references/ingest-sources.md)**.
+Pick the path that matches what you detected. The ingest endpoint is `https://ingest.cloud.firetiger.com`, and
+all ingest is **HTTP Basic auth** with the Step 1 credentials (`$USERNAME` / `$PASSWORD`, or
+`$AUTH_HEADER = base64(user:pass)`). The full source menu — with endpoint paths — is in
+**[references/ingest-sources.md](references/ingest-sources.md)**.
 
 | Detected | Recipe |
 |----------|--------|
