@@ -104,8 +104,8 @@ Call **`get_deploy_credentials`** and wire a CI/CD step that POSTs deploy events
 
 Once **GitHub + a telemetry/query source** are connected (the "qualifying" pair), Firetiger auto-discovers
 **Services** (the customer's own software boundaries) and **Providers** (external dependencies — Postgres,
-Vercel, OpenAI, etc.) by triangulating connections, OTEL signals, and the connected repos. It then recommends
-objectives to monitor. You don't build this by hand — connecting the qualifying pair unlocks it.
+Vercel, OpenAI, etc.) by triangulating connections, OTEL signals, and the connected repos, and recommends what
+to monitor. You don't build this by hand — connecting the qualifying pair unlocks it.
 
 ## Step 8 — Create a monitoring agent
 

@@ -20,9 +20,9 @@ metadata:
 # Firetiger Investigate
 
 A Firetiger **investigation is an autonomous AI agent session**, not a document you fill in. You give it a
-problem statement; the `investigate` agent grounds itself in the affected services, their objectives, and open
-issues, runs telemetry queries, and reasons toward a root cause. You read and steer that session — you don't
-hand-edit findings fields.
+problem statement; the `investigate` agent grounds itself in the affected services and open issues, runs
+telemetry queries, and reasons toward a root cause. You read and steer that session — you don't hand-edit
+findings fields.
 
 There are two ways to work an incident: **let the investigation agent drive** (this skill), or **query the
 data yourself** (the `firetiger-query` skill). Use both — launch an investigation for breadth, drop into direct
@@ -126,7 +126,7 @@ Full CRUD is available on the `issues` collection.
 **Key gotcha:** issues are triaged and enriched by an autonomous **Issue Expert agent** (the issue's
 `expert_session`). Don't hand-edit issue fields to steer triage — `send_agent_message` to the `expert_session`
 and let the expert own `workflow_state`, `details`, and closure. Read the issue with `get`, note its
-`source`, `services`, `objectives`, `pull_requests`, and `observations`.
+`source`, `services`, `pull_requests`, and `observations`.
 
 To find or review issues:
 ```
@@ -149,6 +149,5 @@ get with name: "issues/FT-42"
 ## Related
 
 - Query mechanics and full schema: `firetiger-query`.
-- Objectives (SLOs) automatically fire investigations when they burn — a triggered investigation is the same
-  session type. See `firetiger-create-agent` for the agent/monitoring side.
+- Create a standing agent to investigate on a schedule or trigger: `firetiger-create-agent`.
 - Tie an investigation to a specific deploy: `firetiger-monitor-deploy`.

@@ -35,10 +35,12 @@ Two mechanisms, referenced throughout the skills:
   call opens a browser to sign in). Tools: `get_ingest_credentials`, `get_deploy_credentials`, `query`,
   `monitor_pr`, `create_agent_with_goal`, `send_agent_message`, `read_agent_messages`, `resolve_url`,
   `get_subscription_status`/`get_checkout_url` (billing), `onboard_github`/`onboard_slack`/`onboard_linear`
-  (OAuth connect), and generic CRUD (`schema`/`list`/`get`/`create`/`update`/`delete`) over collections:
-  `agents`, `sessions`, `triggers`, `scheduled-agent-runs`, `investigations`, `issues` (IDs are `FT-{n}` call
-  signs), `monitoring-plans`, `objectives`, `runbooks`, `connections`, `notes`, `customers`,
-  `issue-notification-policies`. Some tools/collections are gated by deployment config and API-key policy.
+  (OAuth connect), and generic CRUD (`schema`/`list`/`get`/`create`/`update`/`delete`). The collections a
+  client agent works with: `agents` + `sessions` (create/run agents), `triggers` + `scheduled-agent-runs`
+  (automate them), `investigations` (AI diagnosis sessions), `issues` (Known Issues, IDs are `FT-{n}` call
+  signs), `monitoring-plans` (deploy monitoring, read/delete), and `connections` (integrations). Always
+  `schema` a collection before `create`/`update`. Some tools and collections are gated by deployment config
+  and API-key policy.
 - **The `@firetiger` GitHub flow** — comment `@firetiger` on a pull request to have Firetiger monitor the
   deployment that PR produces.
 

@@ -56,9 +56,10 @@ to sign in). The skills drive Firetiger through its tools:
 - **Agents** — `create_agent_with_goal`, `send_agent_message`, `read_agent_messages`.
 - **Billing / connect** — `get_subscription_status`, `get_checkout_url`, `onboard_github` / `onboard_slack` /
   `onboard_linear` (gated by deployment config).
-- **Resources** — `schema` / `list` / `get` / `create` / `update` / `delete` over collections: `agents`,
-  `sessions`, `triggers`, `scheduled-agent-runs`, `investigations`, `issues` (IDs are `FT-{n}` call signs),
-  `monitoring-plans`, `objectives`, `runbooks`, `connections`, `notes`, `customers`, `issue-notification-policies`.
+- **Resources** — `schema` / `list` / `get` / `create` / `update` / `delete` over the collections a client
+  agent works with: `agents` and `sessions` (create and run agents), `triggers` and `scheduled-agent-runs`
+  (automate them), `investigations` (AI diagnosis sessions), `issues` (Known Issues, `FT-{n}` call signs),
+  `monitoring-plans` (deploy monitoring, read/delete), and `connections` (integrations).
 - **Navigation** — `resolve_url` (resolve a Firetiger UI URL to an API resource).
 
 ## Prerequisites

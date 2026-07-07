@@ -2,9 +2,9 @@
 name: firetiger-create-agent
 description: >
   Use when creating a Firetiger monitoring agent, installing a prebuilt catalog
-  agent, or configuring an agent's triggers, schedules, and runbooks — monitoring
-  something automatically, scheduling recurring or one-off analysis, or wiring
-  event-driven automation. Always use this skill to create or automate an agent —
+  agent, or configuring an agent's triggers and schedules — monitoring something
+  automatically, scheduling recurring or one-off analysis, or wiring event-driven
+  automation. Always use this skill to create or automate an agent —
   it carries the critical gotchas (prefer create_agent_with_goal and answer the
   planner, agents must be AGENT_STATE_ON to fire, triggers are separate resources
   with six config types, scheduled-agent-runs are one-shot not cron).
@@ -32,9 +32,9 @@ create_agent_with_goal with:
   title: "Checkout Health Monitor"   # optional
 ```
 
-The agent-planner (a system agent, `agents/agent-planner`) configures the prompt, connections, triggers, and
-SLOs from the goal, then returns the planner conversation. **If the planner asked a question, you must answer
-it** or the agent won't finish — reply with `send_agent_message` on the plan session.
+The agent-planner (a system agent, `agents/agent-planner`) configures the prompt, connections, and triggers
+from the goal, then returns the planner conversation. **If the planner asked a question, you must answer it**
+or the agent won't finish — reply with `send_agent_message` on the plan session.
 
 ## Path A (recommended): create from a goal
 
@@ -120,13 +120,6 @@ create with resource: "triggers"
 `scheduled-agent-runs` are **single deferred invocations** ("run this prompt on agent X in 1 hour"), not
 recurring schedules. Fields: `agent_id`, `prompt`, `time_delta` (delay from now), plus `use_latest_session` /
 `incognito`; `scheduled_time` and `has_run` are output-only. For anything recurring, use a **cron trigger**.
-
-## Runbooks — procedures agents follow
-
-A `runbooks/{id}` resource is a written on-call procedure (`text`) plus a `connections[]` scope
-(`{name, enabled_tools}`) limiting which tools an agent may use while executing it (empty = informational
-only). Full CRUD on the `runbooks` collection. Agents consult a matching runbook when working that class of
-problem — author one to standardize a response.
 
 ## Writing good agent prompts
 
