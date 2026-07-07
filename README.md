@@ -14,8 +14,31 @@ mechanism.
 
 ## Install
 
+These skills are published to the [**skills.sh**](https://skills.sh/firetiger-oss/skills) directory and
+install with the [`skills` CLI](https://github.com/vercel-labs/skills) (works with Claude Code, Cursor, Codex,
+Copilot, Windsurf, Gemini, and 70+ other agents):
+
 ```sh
 npx skills add firetiger-oss/skills
+```
+
+The command prompts you to pick which agents to install for and which skills to include, then writes them into
+that agent's skills directory (e.g. `.claude/skills/` or `.cursor/skills/` in the project). Useful variants:
+
+```sh
+# Preview the available skills without installing
+npx skills add firetiger-oss/skills --list
+
+# Install every skill for Claude Code, no prompts
+npx skills add firetiger-oss/skills -a claude-code -y
+
+# Install globally (~/.claude/skills/) instead of into the project
+npx skills add firetiger-oss/skills -g
+
+# List what's installed, or update / remove later
+npx skills list
+npx skills update firetiger-oss/skills
+npx skills remove firetiger-oss/skills
 ```
 
 Then connect the Firetiger MCP server so the skills can call its tools:
