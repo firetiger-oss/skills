@@ -54,10 +54,11 @@ Tables are namespaced by signal type and service name. Names with slashes **must
 |--------|-------|
 | Traces | `"opentelemetry/traces/{service_name}"` |
 | Logs | `"opentelemetry/logs/{service_name}"` |
-| Metric series (metadata) | `opentelemetry_metrics_series` |
-| Metric data | `opentelemetry_metrics_gauges`, `opentelemetry_metrics_counters_cumulative`, `opentelemetry_metrics_counters_delta`, `opentelemetry_metrics_histograms_cumulative`, … |
+| Metrics catalog | `"opentelemetry/metrics"` (one row per metric — discover names here) |
+| Metric data | `"opentelemetry/metrics/{metric_name}"` (one table per metric; values inline) |
 
-Run `SHOW TABLES;` to see the services actually sending data.
+Run `SHOW TABLES;` to see the services and metrics actually sending data. Metrics use a per-metric table with
+values inline — there is no `series` join and no `opentelemetry_metrics_gauges`/`_series` tables.
 
 ## Essential facts
 
@@ -76,7 +77,7 @@ Run `SHOW TABLES;` to see the services actually sending data.
 |------|-----------|
 | **Full column reference** for traces, logs, and deeply-nested attributes | [references/schema.md](references/schema.md) |
 | **Ready-to-run queries** — recent/slow/error spans, latency percentiles, error logs, cross-service traces | [references/query-examples.md](references/query-examples.md) |
-| **Metrics** — series join pattern, discovering available metrics, gauge/counter/histogram tables | [references/metrics.md](references/metrics.md) |
+| **Metrics** — the metadata catalog, per-metric data tables, gauge/sum/histogram value columns | [references/metrics.md](references/metrics.md) |
 
 ## Common Mistakes
 
