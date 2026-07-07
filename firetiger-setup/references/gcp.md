@@ -1,0 +1,37 @@
+# GCP Cloud Logging
+
+Forward GCP Cloud Logging to Firetiger via a logging sink → Pub/Sub topic → Cloud Function forwarder. Uses the
+Step 1 credentials: `$INGEST_URL`, `$USERNAME`, `$PASSWORD`. Requires `which gcloud` and a chosen `$REGION`.
+
+```bash
+# Current project
+PROJECT=$(gcloud config get-value project)
+
+# Enable required APIs
+gcloud services enable cloudfunctions.googleapis.com pubsub.googleapis.com logging.googleapis.com \
+  run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com eventarc.googleapis.com
+
+# Pub/Sub topic
+gcloud pubsub topics create firetiger-cloud-logs
+
+# Logging sink → topic
+gcloud logging sinks create firetiger-cloud-logs \
+  pubsub.googleapis.com/projects/$PROJECT/topics/firetiger-cloud-logs
+
+# Grant the sink's writer identity publish permission
+SINK_SA=$(gcloud logging sinks describe firetiger-cloud-logs --format='value(writerIdentity)')
+gcloud pubsub topics add-iam-policy-binding firetiger-cloud-logs \
+  --member="$SINK_SA" --role="roles/pubsub.publisher"
+
+# Deploy the forwarder Cloud Function
+gcloud functions deploy firetiger-cloud-logs-forwarder \
+  --gen2 --runtime=python313 \
+  --trigger-topic=firetiger-cloud-logs \
+  --entry-point=process_log_entry \
+  --set-env-vars="FT_EXPORTER_ENDPOINT=$INGEST_URL,FT_EXPORTER_BASIC_AUTH_USERNAME=$USERNAME,FT_EXPORTER_BASIC_AUTH_PASSWORD=$PASSWORD" \
+  --source=gs://firetiger-public/ingest/gcp/cloud-logging/function.zip \
+  --region=$REGION
+```
+
+By default the sink forwards all project logs. Add a `--log-filter='...'` to the `gcloud logging sinks create`
+command to scope which logs are exported.

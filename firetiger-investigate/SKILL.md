@@ -1,101 +1,74 @@
 ---
 name: firetiger-investigate
-description: "Run a Firetiger investigation to diagnose an issue or incident and track findings. Use when the user wants to investigate, diagnose, or troubleshoot a problem using telemetry, or track findings during an incident. Covers the investigations collection (schema/list/create/get/update), a broad-to-narrow analysis workflow, and SQL patterns for latency, errors, and missing data."
+description: >
+  Use when diagnosing an issue or incident with Firetiger and tracking the findings
+  — investigating, troubleshooting, or root-causing a problem using telemetry, or
+  recording what you found in a durable investigation. Always use this skill for
+  incident diagnosis — it carries the critical gotchas (run schema before create,
+  query the real Iceberg tables not a generic "traces" table, document findings
+  incrementally) that turn scattered queries into a tracked investigation.
+license: Apache-2.0
 user_invocable: true
 user_invocable_description: "Start an investigation to diagnose issues in Firetiger"
+metadata:
+  author: firetiger
+  version: "1.0.0"
+  homepage: https://firetiger.com
+  source: https://github.com/firetiger-oss/skills
 ---
 
 # Firetiger Investigate
 
-You are an expert at running investigations in Firetiger to diagnose issues and analyze telemetry.
-
-## Overview
-
-Firetiger investigations are time-bounded analysis sessions that systematically diagnose issues using
-observability data. An investigation tracks your findings, queries, and conclusions in one place. Investigations
-are a Firetiger MCP collection, managed with the generic CRUD tools (`schema`, `list`, `create`, `get`,
-`update`, `delete`).
-
-## Managing investigations with MCP tools
-
-### Discover the schema
-Always inspect the current fields before creating or updating — field names below are illustrative.
-```
-schema with collection: "investigations"
-```
-
-### List existing investigations
-```
-list with resource: "investigations"
-```
-Filter by status or time range to find relevant ones.
-
-### Create an investigation
-```
-create with resource: "investigations"
-```
-Typical fields:
-- **title** — brief description of what you're investigating
-- **description** — detailed context about the issue
-- **time_range** — the time window to focus on
-- **services** — relevant services
-
-### Get details
-```
-get with name: "investigations/{id}"
-```
-
-### Update with findings / status
-```
-update with name: "investigations/{id}"
-```
-Update fields like **findings**, **status** (`in_progress`, `resolved`, `closed`), and **root_cause**.
+A Firetiger investigation is a time-bounded analysis session that tracks your findings, queries, and
+conclusions in one place. Investigations are a Firetiger MCP collection managed with the generic CRUD tools
+(`schema`, `list`, `create`, `get`, `update`, `delete`).
 
 ## Workflow
 
 ### 1. Start the investigation
-1. Run `schema` to learn the fields.
-2. `create` an investigation with a clear title and context.
-3. Note the investigation ID / resource name.
+```
+schema with collection: "investigations"    # learn the fields first — they're inferred and may drift
+create with resource: "investigations"       # title, description, time_range, services
+```
+Note the returned investigation ID.
 
 ### 2. Analyze telemetry
-Use the `query` tool to run SQL against the warehouse. Firetiger telemetry lives in per-service Iceberg
-tables (`"opentelemetry/traces/{service}"`, `"opentelemetry/logs/{service}"`) — see the `firetiger-query`
-skill for the full schema. Every `SELECT` needs `LIMIT < 200`. Discover services with `SHOW TABLES;`.
+Use the `query` tool against the per-service Iceberg tables (`"opentelemetry/traces/{service}"`,
+`"opentelemetry/logs/{service}"`). Discover services with `SHOW TABLES;`. Every `SELECT` needs `LIMIT < 200`.
+See the `firetiger-query` skill for the full schema; the essentials: duration = `end_time - start_time`, error
+status = `status.code = 2`, filter on `start_time` / `time` first.
 
-**Errors in the time window:**
+**Errors in the window:**
 ```sql
 SELECT trace_id, name, status.code, status.message, start_time
 FROM "opentelemetry/traces/checkout-service"
-WHERE status.code = 2  -- ERROR
-  AND start_time BETWEEN TIMESTAMPTZ '{start_time}' AND TIMESTAMPTZ '{end_time}'
+WHERE status.code = 2
+  AND start_time BETWEEN TIMESTAMPTZ '{start}' AND TIMESTAMPTZ '{end}'
 ORDER BY start_time DESC
 LIMIT 100;
 ```
 
-**Latency patterns by operation:**
+**Latency by operation:**
 ```sql
-SELECT name,
-       COUNT(*) AS count,
+SELECT name, COUNT(*) AS count,
        AVG(EXTRACT(EPOCH FROM (end_time - start_time))) * 1e3 AS avg_ms,
        MAX(EXTRACT(EPOCH FROM (end_time - start_time))) * 1e3 AS max_ms
 FROM "opentelemetry/traces/checkout-service"
-WHERE start_time BETWEEN TIMESTAMPTZ '{start_time}' AND TIMESTAMPTZ '{end_time}'
+WHERE start_time BETWEEN TIMESTAMPTZ '{start}' AND TIMESTAMPTZ '{end}'
 GROUP BY name
 ORDER BY avg_ms DESC
 LIMIT 100;
 ```
 
-**Correlate error logs with traces:**
+**Error logs → then pull the trace:**
 ```sql
 SELECT time, severity_text, body, trace_id
 FROM "opentelemetry/logs/checkout-service"
-WHERE time BETWEEN TIMESTAMPTZ '{start_time}' AND TIMESTAMPTZ '{end_time}'
-  AND severity_number >= 13  -- WARN and above
+WHERE time BETWEEN TIMESTAMPTZ '{start}' AND TIMESTAMPTZ '{end}'
+  AND severity_number >= 13   -- WARN and above
 ORDER BY time DESC
 LIMIT 100;
 ```
-Then pull the full trace for a `trace_id` of interest:
 ```sql
 SELECT name, resource.attributes.service.name AS service, start_time,
        end_time - start_time AS duration, status.code
@@ -105,44 +78,41 @@ ORDER BY start_time
 LIMIT 100;
 ```
 
-### 3. Document findings
-`update` the investigation as you go — patterns identified, root-cause analysis, affected services or
-endpoints, and recommendations. Note specific `trace_id`s that demonstrate the issue.
+### 3. Document findings (incrementally)
+```
+update with name: "investigations/{id}"     # findings, patterns, affected services, recommendations
+```
+Record the specific `trace_id`s that prove the issue.
 
 ### 4. Close it
 ```
 update with name: "investigations/{id}"
   status: "resolved"
-  root_cause: "Description of the root cause"
-  resolution: "How it was fixed or mitigated"
+  root_cause: "..."
+  resolution: "..."
 ```
-
-## Best practices
-
-1. **Define a clear time window** and filter on it first (partition pruning).
-2. **Start broad, then narrow** — high-level aggregates before drilling into individual traces.
-3. **Document incrementally** — update the investigation as findings emerge.
-4. **Link specific traces** — record the `trace_id`s that prove the issue.
-5. **Check dependencies** — look upstream and downstream of the suspect service.
 
 ## Common scenarios
 
-### High latency
-1. Find slow traces in the window (order by `end_time - start_time`).
-2. Identify the service/span contributing most.
-3. Check DB queries, external calls, or resource contention on that span.
+| Scenario | Approach |
+|----------|----------|
+| **High latency** | Find slow traces (order by `end_time - start_time`) → identify the span contributing most → check DB queries, external calls, contention on that span. |
+| **Error spike** | Group errors by service + message → find the first occurrence → correlate with a deploy or config change (see `firetiger-monitor-deploy`). |
+| **Missing data** | Count spans by service over time → look for gaps → verify instrumentation with `firetiger-instrument`. |
 
-### Error spike
-1. Group errors by service and error type/message.
-2. Find the first occurrence of the pattern.
-3. Correlate with a deployment or config change — the `firetiger-monitor-deploy` skill ties deploys to windows.
+## Common Mistakes
 
-### Missing data
-1. Count spans by service over time.
-2. Look for gaps.
-3. Verify instrumentation with `firetiger-instrument`.
+| # | Mistake | Fix |
+|---|---------|-----|
+| 1 | **`create` before `schema`** | Investigation fields are inferred and may drift — call `schema` first. |
+| 2 | **Querying a generic `traces` table** | Data lives in `"opentelemetry/traces/{service}"` — run `SHOW TABLES;` to find services. |
+| 3 | **`status_code = 'ERROR'` / `duration_ns`** | Use `status.code = 2` and `end_time - start_time` — see the query gotchas. |
+| 4 | **Not tracking findings** | Update the investigation as you go; don't leave analysis only in chat. |
+| 5 | **No time window** | Define and filter a specific window first — it's the whole point of an investigation and enables partition pruning. |
+| 6 | **Ignoring dependencies** | Check upstream and downstream services, not just the suspect one. |
 
 ## Related
 
-- To have an autonomous agent run investigations on a schedule or on demand, see `firetiger-create-agent`.
-- To tie an investigation to a specific deploy, see `firetiger-monitor-deploy`.
+- Query mechanics and full schema: `firetiger-query`.
+- Automate recurring investigations: `firetiger-create-agent`.
+- Tie an investigation to a specific deploy: `firetiger-monitor-deploy`.

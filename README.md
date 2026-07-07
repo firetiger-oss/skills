@@ -1,8 +1,11 @@
 # Firetiger Agent Skills
 
 Agent skills that teach coding agents how to use [Firetiger](https://firetiger.com) — the AI-powered
-observability platform. This repository is the **single canonical source** for "how to use Firetiger" skills;
-the [cursor-plugin](https://github.com/firetiger-oss/cursor-plugin) and
+observability platform. Written in the [Agent Skills](https://agentskills.io) format (one folder per skill,
+a `SKILL.md` with YAML frontmatter, and `references/` for progressive disclosure).
+
+This repository is the **single canonical source** for "how to use Firetiger" skills; the
+[cursor-plugin](https://github.com/firetiger-oss/cursor-plugin) and
 [claude-plugin](https://github.com/firetiger-oss/claude-plugin) sync their skill content from here.
 
 Each skill teaches an agent *when* and *how* to accomplish a Firetiger task, referencing the **Firetiger MCP
@@ -25,17 +28,22 @@ Then connect the Firetiger MCP server so the skills can call its tools:
 }
 ```
 
+The first tool call opens a browser to sign in / create a Firetiger account.
+
 ## Skills
 
 | Skill | What it does |
 |-------|--------------|
 | [`firetiger`](firetiger/SKILL.md) | Router — classifies a Firetiger request and delegates to the right skill below. |
-| [`firetiger-setup`](firetiger-setup/SKILL.md) | End-to-end onboarding: authenticate, detect the stack, set up telemetry, connect integrations, register deployments, create a monitoring agent. |
+| [`firetiger-setup`](firetiger-setup/SKILL.md) | End-to-end onboarding: authenticate, detect the stack, set up telemetry (OTEL SDK or platform drains), connect integrations, register deployments, create a monitoring agent. |
 | [`firetiger-instrument`](firetiger-instrument/SKILL.md) | Add OpenTelemetry instrumentation (Node.js, Next.js, Python, Go, Rust) with the exporter pointed at Firetiger. |
 | [`firetiger-query`](firetiger-query/SKILL.md) | Query traces, logs, and metrics with DuckDB SQL via the `query` tool — table naming, schemas, and ready-to-run examples. |
 | [`firetiger-investigate`](firetiger-investigate/SKILL.md) | Run an investigation to diagnose an incident and track findings against the `investigations` collection. |
 | [`firetiger-monitor-deploy`](firetiger-monitor-deploy/SKILL.md) | Monitor a PR/deploy via `monitor_pr`, the `@firetiger` comment flow (auto-monitoring at fixed checkpoints), and the deployments registration API; interact with the monitoring agent. |
 | [`firetiger-create-agent`](firetiger-create-agent/SKILL.md) | Create a monitoring agent from a natural-language goal (`create_agent_with_goal`) or configure agents and triggers manually. |
+
+Each skill's `SKILL.md` is a concise entry point; longer detail (per-language instrumentation, query schema
+and examples, platform drain recipes) lives in that skill's `references/` directory and is loaded on demand.
 
 ## The Firetiger MCP server
 
@@ -48,6 +56,11 @@ The skills drive Firetiger through its MCP tools:
 - **Resources** — `schema` / `list` / `get` / `create` / `update` / `delete` over collections such as
   `agents`, `investigations`, `issues`, `connections`, `monitoring-plans`, `triggers`, and `runbooks`.
 - **Navigation** — `resolve_url` (resolve a Firetiger UI URL to an API resource).
+
+## Prerequisites
+
+- A Firetiger account (created on first sign-in via the MCP server).
+- The Firetiger MCP server connected at `https://api.cloud.firetiger.com/mcp/v1`.
 
 ## Contributing
 
