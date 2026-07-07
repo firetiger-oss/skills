@@ -1,42 +1,85 @@
 ---
 name: firetiger-investigate
 description: >
-  Use when diagnosing an issue or incident with Firetiger and tracking the findings
-  — investigating, troubleshooting, or root-causing a problem using telemetry, or
-  recording what you found in a durable investigation. Always use this skill for
-  incident diagnosis — it carries the critical gotchas (run schema before create,
-  query the real Iceberg tables not a generic "traces" table, document findings
-  incrementally) that turn scattered queries into a tracked investigation.
+  Use when diagnosing an issue or incident with Firetiger — launching or reading a
+  Firetiger investigation, troubleshooting with telemetry, or working the issues an
+  investigation surfaces. Always use this skill for incident diagnosis — it carries
+  the critical gotchas (an investigation is an AI agent session, not a findings form;
+  its status is server-set; issues are managed by an expert agent you steer rather
+  than mutate) that keep you working with the product instead of against it.
 license: Apache-2.0
 user_invocable: true
-user_invocable_description: "Start an investigation to diagnose issues in Firetiger"
+user_invocable_description: "Start or read a Firetiger investigation to diagnose issues"
 metadata:
   author: firetiger
-  version: "1.0.0"
+  version: "1.1.0"
   homepage: https://firetiger.com
   source: https://github.com/firetiger-oss/skills
 ---
 
 # Firetiger Investigate
 
-A Firetiger investigation is a time-bounded analysis session that tracks your findings, queries, and
-conclusions in one place. Investigations are a Firetiger MCP collection managed with the generic CRUD tools
-(`schema`, `list`, `create`, `get`, `update`, `delete`).
+A Firetiger **investigation is an autonomous AI agent session**, not a document you fill in. You give it a
+problem statement; the `investigate` agent grounds itself in the affected services, their objectives, and open
+issues, runs telemetry queries, and reasons toward a root cause. You read and steer that session — you don't
+hand-edit findings fields.
 
-## Workflow
+There are two ways to work an incident: **let the investigation agent drive** (this skill), or **query the
+data yourself** (the `firetiger-query` skill). Use both — launch an investigation for breadth, drop into direct
+SQL when you want to dig a specific thread.
 
-### 1. Start the investigation
+## Quick Start
+
+**Launch an investigation** — `create` on the `investigations` collection with a clear problem statement:
 ```
-schema with collection: "investigations"    # learn the fields first — they're inferred and may drift
-create with resource: "investigations"       # title, description, time_range, services
+create with resource: "investigations"
+  body: {
+    "display_name": "Checkout 5xx spike",
+    "description": "Error rate on checkout-service jumped ~4x starting 14:20 UTC; find the cause and blast radius."
+  }
 ```
-Note the returned investigation ID.
+The resource ID *is* the agent session ID. Creating it starts the `investigate` agent.
 
-### 2. Analyze telemetry
-Use the `query` tool against the per-service Iceberg tables (`"opentelemetry/traces/{service}"`,
-`"opentelemetry/logs/{service}"`). Discover services with `SHOW TABLES;`. Every `SELECT` needs `LIMIT < 200`.
-See the `firetiger-query` skill for the full schema; the essentials: duration = `end_time - start_time`, error
-status = `status.code = 2`, filter on `start_time` / `time` first.
+**Read an existing investigation** — you have a Firetiger URL or ID:
+```
+resolve_url with url: "https://ui.<org>.firetigerapi.com/investigations/<id>"   # → the resource name
+read_agent_messages with session: "agents/investigate/sessions/<id>"            # the agent's reasoning + findings
+```
+(There is also a built-in MCP **prompt** `read-investigation` that takes a `url_or_id` and walks this for you.)
+
+## The investigation resource
+
+Deliberately thin — it wraps a session; the findings live in the transcript, not in fields:
+
+| Field | Notes |
+|-------|-------|
+| `display_name` | Short title |
+| `description` | The problem statement — what to investigate and why |
+| `status` | **Server-set**: `EXECUTING` (agent working) or `WAITING` (agent paused, needs input). You do not set it. |
+| `created_by`, `create_time` | Output-only |
+
+There is **no** `findings`, `root_cause`, `resolution`, `time_range`, or `services` field — don't try to write
+them. To progress or redirect the investigation, message its session.
+
+## Steering an investigation
+
+```
+# See where it's at (blocks until the agent is WAITING if you pass wait_for_completion)
+read_agent_messages with session: "agents/investigate/sessions/<id>"
+
+# Redirect or answer its question
+send_agent_message with session: "agents/investigate/sessions/<id>"
+  message: "Focus on the payment dependency — compare error rate to the deploy at 14:15 and check DB latency."
+```
+
+`send_agent_message` waits for the agent to finish its turn by default. A `WAITING` status means it wants your
+input.
+
+## Diagnosing directly with SQL
+
+When you'd rather drive, use the `query` tool (full mechanics in `firetiger-query`). Telemetry lives in
+per-service Iceberg tables; discover them with `SHOW TABLES;`. Duration = `end_time - start_time`; errors =
+`status.code = 2`; filter the time column first. Bound results with a `LIMIT`.
 
 **Errors in the window:**
 ```sql
@@ -60,7 +103,7 @@ ORDER BY avg_ms DESC
 LIMIT 100;
 ```
 
-**Error logs → then pull the trace:**
+**Error logs → then pull the trace by ID** (`x'...'` literal):
 ```sql
 SELECT time, severity_text, body, trace_id
 FROM "opentelemetry/logs/checkout-service"
@@ -69,50 +112,43 @@ WHERE time BETWEEN TIMESTAMPTZ '{start}' AND TIMESTAMPTZ '{end}'
 ORDER BY time DESC
 LIMIT 100;
 ```
-```sql
-SELECT name, resource.attributes.service.name AS service, start_time,
-       end_time - start_time AS duration, status.code
-FROM "opentelemetry/traces/checkout-service"
-WHERE trace_id = x'{trace_id_hex}'
-ORDER BY start_time
-LIMIT 100;
-```
 
-### 3. Document findings (incrementally)
-```
-update with name: "investigations/{id}"     # findings, patterns, affected services, recommendations
-```
-Record the specific `trace_id`s that prove the issue.
+## Issues — the durable output of a diagnosis
 
-### 4. Close it
-```
-update with name: "investigations/{id}"
-  status: "resolved"
-  root_cause: "..."
-  resolution: "..."
-```
+A Firetiger **Issue** (a "Known Issue") is the record an agent files when it finds a real, human-worthy
+problem. Issue IDs are call signs: **`FT-{number}`**, resource name `issues/FT-{number}` (server-generated).
+Full CRUD is available on the `issues` collection.
 
-## Common scenarios
+**Workflow state** (`workflow_state`): `INVESTIGATING → ACTIONABLE → VERIFYING_FIX → CLOSED`. New issues start
+`INVESTIGATING`. Closing requires a `closure.reason`, one of: `RESOLVED`, `ACCEPTED_RISK`, `FALSE_POSITIVE`,
+`DUPLICATE`, `NOT_USEFUL`. There is no severity field.
 
-| Scenario | Approach |
-|----------|----------|
-| **High latency** | Find slow traces (order by `end_time - start_time`) → identify the span contributing most → check DB queries, external calls, contention on that span. |
-| **Error spike** | Group errors by service + message → find the first occurrence → correlate with a deploy or config change (see `firetiger-monitor-deploy`). |
-| **Missing data** | Count spans by service over time → look for gaps → verify instrumentation with `firetiger-instrument`. |
+**Key gotcha:** issues are triaged and enriched by an autonomous **Issue Expert agent** (the issue's
+`expert_session`). Don't hand-edit issue fields to steer triage — `send_agent_message` to the `expert_session`
+and let the expert own `workflow_state`, `details`, and closure. Read the issue with `get`, note its
+`source`, `services`, `objectives`, `pull_requests`, and `observations`.
+
+To find or review issues:
+```
+list with resource: "issues"                 # filter by workflow_state, service, etc.
+get with name: "issues/FT-42"
+```
 
 ## Common Mistakes
 
 | # | Mistake | Fix |
 |---|---------|-----|
-| 1 | **`create` before `schema`** | Investigation fields are inferred and may drift — call `schema` first. |
-| 2 | **Querying a generic `traces` table** | Data lives in `"opentelemetry/traces/{service}"` — run `SHOW TABLES;` to find services. |
-| 3 | **`status_code = 'ERROR'` / `duration_ns`** | Use `status.code = 2` and `end_time - start_time` — see the query gotchas. |
-| 4 | **Not tracking findings** | Update the investigation as you go; don't leave analysis only in chat. |
-| 5 | **No time window** | Define and filter a specific window first — it's the whole point of an investigation and enables partition pruning. |
-| 6 | **Ignoring dependencies** | Check upstream and downstream services, not just the suspect one. |
+| 1 | **Treating an investigation as a form** | It's an agent session — set `description` and read/steer via the session; there are no findings/root_cause fields to write. |
+| 2 | **Setting `status: resolved`** | `status` is server-set (`EXECUTING`/`WAITING`) — you can't mark an investigation resolved. Close the loop by filing/closing an **issue**. |
+| 3 | **Editing issue fields to drive triage** | Message the issue's `expert_session` instead; the expert owns state and enrichment. |
+| 4 | **Inventing an issue ID** | `FT-{number}` call signs are server-generated on create — don't pass one. |
+| 5 | **Closing an issue without a reason** | `closure.reason` is required (RESOLVED / ACCEPTED_RISK / FALSE_POSITIVE / DUPLICATE / NOT_USEFUL). |
+| 6 | **Querying a generic `traces` table** | Data is per-service — `SHOW TABLES;`, then `"opentelemetry/traces/{service}"`. See `firetiger-query`. |
+| 7 | **`status_code = 'ERROR'` / `duration_ns`** | Use `status.code = 2` and `end_time - start_time`. |
 
 ## Related
 
 - Query mechanics and full schema: `firetiger-query`.
-- Automate recurring investigations: `firetiger-create-agent`.
+- Objectives (SLOs) automatically fire investigations when they burn — a triggered investigation is the same
+  session type. See `firetiger-create-agent` for the agent/monitoring side.
 - Tie an investigation to a specific deploy: `firetiger-monitor-deploy`.

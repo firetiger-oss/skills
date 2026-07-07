@@ -1,7 +1,7 @@
 # Firetiger query examples
 
-Copy-paste patterns for traces and logs. Every query time-filters first and includes `LIMIT < 200`. Replace
-service names with ones from `SHOW TABLES;`.
+Copy-paste patterns for traces and logs. Every query time-filters first (day-partition pruning) and adds a
+`LIMIT` to bound the result. Replace service names with ones from `SHOW TABLES;`.
 
 ## Recent spans
 

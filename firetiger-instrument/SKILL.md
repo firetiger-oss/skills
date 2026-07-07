@@ -77,8 +77,8 @@ Add credential files to `.gitignore` (`.env.local`, `.env.*.local`). Never commi
 
 1. Generate some traffic.
 2. Query with the `firetiger-query` skill:
-   `SELECT * FROM "opentelemetry/traces/your-service-name" WHERE start_time >= NOW() - INTERVAL '15 minutes' LIMIT 10`
-   (remember: `SHOW TABLES;` first, and every `SELECT` needs `LIMIT < 200`).
+   `SELECT name, start_time FROM "opentelemetry/traces/your-service-name" WHERE start_time >= NOW() - INTERVAL '15 minutes' LIMIT 10`
+   (run `SHOW TABLES;` first to confirm your service's table appeared).
 
 ## Common Mistakes
 

@@ -35,3 +35,13 @@ gcloud functions deploy firetiger-cloud-logs-forwarder \
 
 By default the sink forwards all project logs. Add a `--log-filter='...'` to the `gcloud logging sinks create`
 command to scope which logs are exported.
+
+## Delivery options
+
+Firetiger accepts GCP logs two ways:
+- **Pub/Sub pull** — the forwarder function above, driven by the logging sink → Pub/Sub topic (shown here).
+- **HTTP push** — a Log Router sink or Cloud Function can POST Cloud Logging `LogEntry` payloads directly to
+  `$INGEST_URL/gcp/cloud-logging` with the Basic auth header, skipping the pull subscriber.
+
+Choose HTTP push for the simplest setup; use the Pub/Sub path when you want buffering/replay in front of
+Firetiger. For app traces/metrics, add the OTLP SDK (`firetiger-instrument`).

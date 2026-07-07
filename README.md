@@ -47,14 +47,18 @@ and examples, platform drain recipes) lives in that skill's `references/` direct
 
 ## The Firetiger MCP server
 
-The skills drive Firetiger through its MCP tools:
+Connect it at `https://api.cloud.firetiger.com/mcp/v1` (OAuth 2.0 bearer — the first tool call opens a browser
+to sign in). The skills drive Firetiger through its tools:
 
 - **Credentials** — `get_ingest_credentials` (OTLP ingest), `get_deploy_credentials` (deployment registration API).
 - **Query** — `query` (DuckDB SQL over Iceberg telemetry tables).
 - **Deploy monitoring** — `monitor_pr` (watch a GitHub PR's deployment).
 - **Agents** — `create_agent_with_goal`, `send_agent_message`, `read_agent_messages`.
-- **Resources** — `schema` / `list` / `get` / `create` / `update` / `delete` over collections such as
-  `agents`, `investigations`, `issues`, `connections`, `monitoring-plans`, `triggers`, and `runbooks`.
+- **Billing / connect** — `get_subscription_status`, `get_checkout_url`, `onboard_github` / `onboard_slack` /
+  `onboard_linear` (gated by deployment config).
+- **Resources** — `schema` / `list` / `get` / `create` / `update` / `delete` over collections: `agents`,
+  `sessions`, `triggers`, `scheduled-agent-runs`, `investigations`, `issues` (IDs are `FT-{n}` call signs),
+  `monitoring-plans`, `objectives`, `runbooks`, `connections`, `notes`, `customers`, `issue-notification-policies`.
 - **Navigation** — `resolve_url` (resolve a Firetiger UI URL to an API resource).
 
 ## Prerequisites

@@ -117,6 +117,7 @@ LIMIT 100;
 
 ## Notes
 
-- Metric data and catalog tables use `time` (not `start_time`) as the partition key — filter on it first.
+- Metric data and catalog tables use `time` (not `start_time`) as the day-partition key — filter on it first.
 - Attributes follow the same depth-2 inference rule as traces/logs — see [schema.md](schema.md).
-- Every `SELECT` still needs `LIMIT < 200`.
+- Add a `LIMIT` to bound results (no fixed cap is enforced, but every row is returned as JSON).
+- A legacy `"opentelemetry/metrics/metadata"` table may exist in older deployments — prefer `"opentelemetry/metrics"`.

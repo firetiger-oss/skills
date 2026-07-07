@@ -6,8 +6,8 @@ description: >
   traces/logs/metrics with SQL, investigating an incident, monitoring a PR or
   deployment, or creating a monitoring agent. Always use this skill when the user
   says "Firetiger", even for simple asks — it routes to the specialized skill that
-  carries the critical gotchas (Basic-auth ingest, the LIMIT<200 query rule, the
-  @firetiger comment flow) that prevent common mistakes.
+  carries the critical gotchas (Basic-auth ingest, DuckDB SQL over per-service
+  tables, the @firetiger comment flow) that prevent common mistakes.
 license: Apache-2.0
 user_invocable: true
 user_invocable_description: "Firetiger observability toolkit — setup, instrumentation, queries, investigations, deploy monitoring, and agents"
@@ -31,9 +31,14 @@ is self-contained and carries the gotchas for its task.
 
 Two mechanisms, referenced throughout the skills:
 
-- **The Firetiger MCP server** — `https://api.cloud.firetiger.com/mcp/v1`. Tools like `get_ingest_credentials`,
-  `query`, `monitor_pr`, `create_agent_with_goal`, and generic CRUD (`schema`/`list`/`get`/`create`/`update`/`delete`)
-  over collections (`agents`, `investigations`, `issues`, `connections`, `monitoring-plans`, `triggers`, …).
+- **The Firetiger MCP server** — `https://api.cloud.firetiger.com/mcp/v1` (OAuth 2.0 bearer; the first tool
+  call opens a browser to sign in). Tools: `get_ingest_credentials`, `get_deploy_credentials`, `query`,
+  `monitor_pr`, `create_agent_with_goal`, `send_agent_message`, `read_agent_messages`, `resolve_url`,
+  `get_subscription_status`/`get_checkout_url` (billing), `onboard_github`/`onboard_slack`/`onboard_linear`
+  (OAuth connect), and generic CRUD (`schema`/`list`/`get`/`create`/`update`/`delete`) over collections:
+  `agents`, `sessions`, `triggers`, `scheduled-agent-runs`, `investigations`, `issues` (IDs are `FT-{n}` call
+  signs), `monitoring-plans`, `objectives`, `runbooks`, `connections`, `notes`, `customers`,
+  `issue-notification-policies`. Some tools/collections are gated by deployment config and API-key policy.
 - **The `@firetiger` GitHub flow** — comment `@firetiger` on a pull request to have Firetiger monitor the
   deployment that PR produces.
 

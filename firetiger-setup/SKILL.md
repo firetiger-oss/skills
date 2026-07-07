@@ -1,125 +1,145 @@
 ---
 name: firetiger-setup
 description: >
-  Use when onboarding a project to Firetiger end-to-end — authenticate, provision,
-  detect the stack, wire up telemetry (OTEL SDK or a platform log/trace drain for
-  Vercel/AWS/GCP/Cloudflare), connect integrations, register deployments, and create
-  a monitoring agent, with minimal user interaction. Always use this skill for
-  first-time Firetiger setup — it carries the critical gotchas (credentials from
-  get_ingest_credentials auto-provision the backend, Basic-auth drains, connect
-  integrations before creating the agent) so onboarding completes in one pass.
+  Use when onboarding a project to Firetiger end-to-end — authenticate, subscribe,
+  detect the stack, wire telemetry from any source (OTLP SDK, platform log/trace
+  drains, Datadog Agent, Prometheus, Vector, or a generic HTTP sink), connect
+  integrations (GitHub, Slack, databases, cloud, observability backends), register
+  deployments, let discovery map services, and create a monitoring agent. Always use
+  this skill for first-time setup — it carries the gotchas (credentials auto-provision,
+  Basic-auth ingest, connect GitHub + telemetry to unlock discovery) that finish
+  onboarding in one pass.
 license: Apache-2.0
 user_invocable: true
-user_invocable_description: "Set up Firetiger for this project — detect the stack, instrument, connect integrations, create a monitoring agent"
+user_invocable_description: "Set up Firetiger for this project — detect the stack, wire telemetry, connect integrations, create a monitoring agent"
 metadata:
   author: firetiger
-  version: "1.0.0"
+  version: "1.1.0"
   homepage: https://firetiger.com
   source: https://github.com/firetiger-oss/skills
 references:
+  - references/ingest-sources.md
+  - references/connections.md
   - references/vercel.md
   - references/aws.md
   - references/gcp.md
   - references/cloudflare.md
+  - references/datadog.md
 ---
 
 # Firetiger Setup
 
-Onboard this project to Firetiger with **minimal user interaction**: detect the stack, wire up telemetry,
-connect integrations, register deployments, and create a monitoring agent — asking the user only when
-genuinely necessary. Make changes automatically; only pause for confirmation when you're actually uncertain.
+Onboard this project to Firetiger with **minimal user interaction**: subscribe, wire up telemetry, connect
+integrations, register deployments, let discovery map the system, and create a monitoring agent. Make changes
+automatically; pause only when genuinely uncertain. Firetiger also ships two built-in MCP **prompts** —
+`onboard-firetiger` (this whole flow) and `integrate-firetiger` (SDK instrumentation) — that mirror these steps.
 
 ## Step 1 — Authenticate & provision
 
-Call **`get_ingest_credentials`**. This one call does double duty: it auto-provisions the org's backend
-(credentials, data storage) if needed, and returns the OTLP ingest endpoint plus username/password.
+Call **`get_ingest_credentials`**. It auto-provisions the org backend (credentials, storage) if needed and
+returns the OTLP endpoint + username/password. If the MCP tools aren't available, tell the user to connect the
+Firetiger MCP server (`https://api.cloud.firetiger.com/mcp/v1`) and sign in (Claude Code: `/mcp` → Firetiger →
+sign in), then retry. Build the Basic auth header as `base64(username:password)` for Step 3.
 
-If the MCP tools aren't available (error about tools not loaded / tool doesn't exist), tell the user:
+## Step 2 — Subscribe
 
-> Firetiger needs authentication. Connect the Firetiger MCP server
-> (`https://api.cloud.firetiger.com/mcp/v1`) and sign in / create an account in the browser, then let me
-> know. (In Claude Code: `/mcp` → select the Firetiger server → sign in.)
+Check **`get_subscription_status`**:
+- `active` / `trialing` → continue.
+- `none` / `canceled` / `past_due` → call **`get_checkout_url`** (plan `bootstrap` is the free tier; `growth`
+  is paid), open it for the user, and wait for them to finish before continuing.
 
-Retry `get_ingest_credentials` when they're done. Keep the returned endpoint, username, and password for
-Step 3 — build the Basic auth header as `base64(username:password)`.
+(These tools appear only on deployments with billing enabled; skip this step if they're absent.)
 
-## Step 2 — Detect the stack
+## Step 3 — Detect the stack
 
 Explore the codebase to find telemetry sources and services Firetiger can connect to:
 
-- **Deployment platforms** (log/trace drains): Vercel (`vercel.json`, `.vercel/`), Cloudflare
-  (`wrangler.toml`), AWS (CloudFormation/CDK/Terraform), GCP (Cloud Logging).
-- **Telemetry sources**: OpenTelemetry (`@opentelemetry/*`, `opentelemetry-*`, `go.opentelemetry.io`),
-  Datadog (`dd-trace`), Prometheus (`prometheus.yml`), Vector (`vector.toml`).
-- **Databases** (direct query): PostgreSQL / MySQL (Prisma, SQLAlchemy, connection strings), ClickHouse.
-- **Event & incident sources**: GitHub (`.git/config`), SendGrid, Kafka, Incident.io, PagerDuty.
+- **Deployment platforms** (log/trace drains): Vercel, Cloudflare, AWS, GCP.
+- **Telemetry sources**: OpenTelemetry (`@opentelemetry/*`, `opentelemetry-*`, `go.opentelemetry.io`), Datadog
+  (`dd-trace`, `datadog`), Prometheus (`prometheus.yml`), Vector (`vector.toml`).
+- **Databases**: PostgreSQL / MySQL (Prisma, SQLAlchemy, connection strings), ClickHouse, Trino, Elasticsearch.
+- **Event & incident sources**: GitHub (`.git/config`), SendGrid, Convex, Kafka, incident.io, PagerDuty.
 - **Language/framework** (for OTEL auto-instrumentation): `package.json` → Node.js; `requirements.txt` /
   `pyproject.toml` → Python; `go.mod` → Go.
 
-## Step 3 — Set up telemetry
+## Step 4 — Wire up telemetry ingestion
 
-Prefer the deployment platform's native drain; fall back to the OTEL SDK. Each reference is a self-contained
-recipe using the Step 1 credentials (`$INGEST_URL`, `$USERNAME`, `$PASSWORD`, `$AUTH_HEADER`).
+Pick the path that matches what you detected. All ingest is **HTTP Basic auth** using the Step 1 credentials
+(`$INGEST_URL`, `$USERNAME`, `$PASSWORD`, `$AUTH_HEADER = base64(user:pass)`). The full source menu — with
+endpoint paths — is in **[references/ingest-sources.md](references/ingest-sources.md)**.
 
-| Detected platform | Recipe |
-|-------------------|--------|
-| Vercel (`which vercel`) | [references/vercel.md](references/vercel.md) — log + trace drains via the Vercel API |
-| AWS (`which aws`) | [references/aws.md](references/aws.md) — CloudWatch logs via CloudFormation onboarding stack |
-| GCP (`which gcloud`) | [references/gcp.md](references/gcp.md) — Cloud Logging sink + Pub/Sub + forwarder function |
-| Cloudflare (`which wrangler`) | [references/cloudflare.md](references/cloudflare.md) — Workers observability destinations |
-| None of the above | Hand off to **`firetiger-instrument`** — OTEL SDK for Node/Next.js/Python/Go/Rust |
+| Detected | Recipe |
+|----------|--------|
+| Vercel | [references/vercel.md](references/vercel.md) — log + trace drains via the Vercel API |
+| AWS (`which aws`) | [references/aws.md](references/aws.md) — CloudWatch/ALB/CloudFront/ECS via CloudFormation + Firehose |
+| GCP (`which gcloud`) | [references/gcp.md](references/gcp.md) — Cloud Logging sink → Pub/Sub → forwarder, or HTTP push |
+| Cloudflare (`which wrangler`) | [references/cloudflare.md](references/cloudflare.md) — Workers observability + Logpush |
+| Datadog Agent already deployed | [references/datadog.md](references/datadog.md) — repoint `DD_URL` at Firetiger (logs+metrics+traces) |
+| Prometheus / Vector / generic HTTP | [references/ingest-sources.md](references/ingest-sources.md) — `remote_write`, Vector sink, `/datapoints/` |
+| None of the above | Hand off to **`firetiger-instrument`** — OTLP SDK for Node/Next.js/Python/Go/Rust |
 
-## Step 4 — Connect integrations
+## Step 5 — Connect integrations
 
-Integrations are the `connections` collection. Inspect the shape with `schema` (collection: `connections`),
-then use `list` / `create`. OAuth connections open a browser window.
+Integrations are **Connections** — how agents read from and act on external systems. The full catalog and the
+connect mechanism (OAuth via `onboard_*`, API key / IAM, private-network transports) is in
+**[references/connections.md](references/connections.md)**.
 
-- **Proactively connect** what you detected (the user can decline): GitHub (if the git remote is github.com),
-  PostgreSQL/MySQL/ClickHouse, AWS/GCP, Datadog/Prometheus, Vercel/Cloudflare.
-- **Ask once about the rest:** "Which of these do you use? (select all): Slack, Linear, PagerDuty,
-  Incident.io" — then connect the selected ones.
-- **Warn about gaps.** If nothing connected: "Your agent can monitor and analyze the app, but can't take
-  actions like Slack alerts or GitHub issues — add connections later from the dashboard." Note specific gaps
-  (no Slack → no real-time alerts; no GitHub → can't search the codebase or track deployments).
+- **GitHub first** — it's required for deploy monitoring *and* discovery. Use `onboard_github` (or `create` on
+  `connections`); the OAuth flow opens a browser.
+- **Proactively connect** what you detected: databases (Postgres/MySQL/ClickHouse/Trino/Elasticsearch),
+  cloud (AWS/GCP), observability backends (Datadog/PromQL), Vercel/Cloudflare.
+- **Ask once about the rest:** "Which do you use? Slack, Linear, PagerDuty, incident.io" — then connect them
+  (`onboard_slack`, `onboard_linear`, or `create` on `connections`).
+- **Private databases** need a NetworkTransport (Tailscale) — see the reference.
+- **Warn about gaps.** No integrations → the agent can monitor and analyze but can't act (Slack alerts, GitHub
+  issues). Note specifics: no Slack → no alerts; no GitHub → no codebase search, no deploy tracking, no discovery.
 
-## Step 5 — Register deployments (recommended)
+## Step 6 — Register deployments
 
-So monitors can verify each release, call **`get_deploy_credentials`** and wire a CI/CD step that POSTs a
-deployment event (commit SHA, environment, version) to the returned endpoint using Basic auth. Details in
+Call **`get_deploy_credentials`** and wire a CI/CD step that POSTs deploy events (`repository`, `environment`,
+`sha`) to the returned endpoint with Basic auth, so monitors verify each release. Details in
 `firetiger-monitor-deploy`.
 
-## Step 6 — Create a monitoring agent
+## Step 7 — Let discovery run
 
-Call **`create_agent_with_goal`** with a goal tailored to the detected stack:
+Once **GitHub + a telemetry/query source** are connected (the "qualifying" pair), Firetiger auto-discovers
+**Services** (the customer's own software boundaries) and **Providers** (external dependencies — Postgres,
+Vercel, OpenAI, etc.) by triangulating connections, OTEL signals, and the connected repos. It then recommends
+objectives to monitor. You don't build this by hand — connecting the qualifying pair unlocks it.
 
-- **Next.js/React:** "Monitor this Next.js application for API route errors, slow page loads, and database
-  query issues. Alert on error-rate spikes and p95 latency increases."
+## Step 8 — Create a monitoring agent
+
+Use **`create_agent_with_goal`** with a goal tailored to the stack (or install a prebuilt catalog agent — see
+`firetiger-create-agent`):
+
+- **Next.js/React:** "Monitor this Next.js app for API route errors, slow page loads, and DB query issues.
+  Alert on error-rate spikes and p95 latency increases."
 - **Python API:** "Monitor this Python API for request errors, slow endpoints, and exception patterns. Track
-  database query performance and alert on anomalies."
-- **Go service:** "Monitor this Go service for errors, goroutine issues, and latency problems. Track memory
-  usage patterns and alert on degradation."
+  DB performance and alert on anomalies."
+- **Go service:** "Monitor this Go service for errors, goroutine issues, and latency; alert on degradation."
 
-If the planner asks a question, answer on the user's behalf from what you detected, replying with
-`send_agent_message` on the returned plan `session`. See `firetiger-create-agent` for the full flow.
+If the planner asks a question, answer from what you detected via `send_agent_message` on the plan session.
 
-## Step 7 — Summary
+## Step 9 — Summary
 
-Show the user: files changed, env vars needed in production, connections configured, the agent created and its
-focus, a link to the Firetiger dashboard, and next steps (install deps, deploy, register deployments).
+Show: files changed, env vars needed in prod, connections configured, telemetry sources wired, deploys
+registered, the agent created and its focus, discovered services/providers, and a dashboard link.
 
 ## Common Mistakes
 
 | # | Mistake | Fix |
 |---|---------|-----|
-| 1 | **Waiting for a separate "provision" step** | `get_ingest_credentials` auto-provisions — there's no extra call. |
-| 2 | **Bearer auth on drains** | Platform drains use HTTP Basic auth (`Authorization: Basic <base64(user:pass)>`). |
-| 3 | **Creating the agent before connecting integrations** | Connect first, or the agent can't take actions (alerts, issues). |
-| 4 | **Committing credentials** | Add credential/env files to `.gitignore`; use platform secret stores in CI. |
-| 5 | **Duplicating existing instrumentation** | Detect existing OTEL setup and repoint it instead of adding a second SDK. |
-| 6 | **Blocking on a failed connection** | Connections are optional — warn about the capability gap and continue. |
+| 1 | **Only considering the OTLP SDK** | Datadog Agent, Prometheus `remote_write`, Vector, platform drains, and `/datapoints/` are all first-class — match the source you actually have. |
+| 2 | **Skipping GitHub** | GitHub is required for deploy monitoring and to unlock discovery — connect it early. |
+| 3 | **Bearer auth on ingest/drains** | Everything ingest-side is HTTP Basic auth (`base64(user:pass)`). |
+| 4 | **Creating the agent before connecting integrations** | Connect first, or the agent can't act (alerts, issues). |
+| 5 | **Hand-hardcoding auth for query connections** | Connection credentials are proxy-injected by host — reference the connection, don't set `Authorization` yourself. |
+| 6 | **Expecting discovery with only telemetry** | Discovery needs the qualifying pair: GitHub + a telemetry/query source. |
+| 7 | **Committing credentials** | Add credential/env files to `.gitignore`; use platform secret stores in CI. |
 
 ## Related
 
-- OTEL SDK fallback for any language: `firetiger-instrument`.
+- OTLP SDK instrumentation: `firetiger-instrument`.
 - Deploy monitoring & the deployments API: `firetiger-monitor-deploy`.
-- Agent configuration detail: `firetiger-create-agent`.
+- Agent & catalog configuration: `firetiger-create-agent`.
+- Firetiger integration docs: <https://docs.firetiger.com>.

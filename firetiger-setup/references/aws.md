@@ -27,5 +27,23 @@ aws cloudformation describe-stacks --stack-name firetiger-cloudwatch-logs \
   --query 'Stacks[0].Outputs' --region $REGION
 ```
 
-The outputs include the created IAM Role ARN — surface it in the Step 7 summary so the user can confirm the
+The outputs include the created IAM Role ARN — surface it in the summary so the user can confirm the
 cross-account role in the Firetiger dashboard if prompted.
+
+## Other AWS sources
+
+CloudWatch Logs is the common case, but Firetiger ingests several other AWS streams (all Basic auth on the
+`$INGEST_URL` host, typically delivered via **Kinesis Firehose**, which also supports a dedicated Firehose
+auth mode):
+
+| Source | Endpoint | Delivery |
+|--------|----------|----------|
+| CloudWatch Logs | `/aws/cloudwatch/logs` | CloudWatch subscription → Firehose |
+| ALB access logs | `/AWSLogs/...` | S3 access-log delivery |
+| CloudFront logs | `/aws/cloudfront/kinesis` | Kinesis Firehose |
+| ECS task state changes | `/aws/eventbridge/ecs-task-state-change`, `/aws/events` | EventBridge rule |
+| Kafka / MSK broker logs | `/aws/kinesis/kafka/logs`, `/aws/kinesis/msk/logs` | Kinesis Firehose |
+
+Point a Firehose delivery stream (HTTP endpoint destination) or EventBridge API destination at the relevant
+path with the Basic auth header. For richer app telemetry, prefer the OTLP SDK (`firetiger-instrument`)
+alongside these infra logs.

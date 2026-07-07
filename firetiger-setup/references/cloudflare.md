@@ -45,3 +45,13 @@ Then deploy:
 ```bash
 wrangler deploy
 ```
+
+## Logpush (beyond Workers)
+
+For zone-level HTTP request logs (not just Workers), create a **Logpush** job pointing at Firetiger. Firetiger
+accepts Logpush three ways:
+- **Direct HTTP** → `$INGEST_URL/cloudflare/logs` (or `/cloudflare/logpush/http_requests`).
+- **Via S3** → `/cloudflare/logpush/s3` (S3 + EventBridge object notifications).
+- **Via GCS** → `/cloudflare/logpush/gcs` (GCS + Pub/Sub notifications).
+
+Use direct HTTP for the simplest path; use the S3/GCS variants when you already push Logpush to object storage.
