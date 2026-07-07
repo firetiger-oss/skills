@@ -78,19 +78,23 @@ endpoint paths — is in **[references/ingest-sources.md](references/ingest-sour
 | Prometheus / Vector / generic HTTP | [references/ingest-sources.md](references/ingest-sources.md) — `remote_write`, Vector sink, `/datapoints/` |
 | None of the above | Hand off to **`firetiger-instrument`** — OTLP SDK for Node/Next.js/Python/Go/Rust |
 
-## Step 5 — Connect integrations
+## Step 5 — Connect integrations (incl. pull-based sources)
 
-Integrations are **Connections** — how agents read from and act on external systems. The full catalog and the
-connect mechanism (OAuth via `onboard_*`, API key / IAM, private-network transports) is in
+Integrations are **Connections**. Many customers rely on **pull-based** connections most of all — Firetiger
+*queries into* their existing Datadog, Prometheus, GCP metrics, and databases rather than ingesting from them.
+The full catalog, per-type config, and connect mechanism is in
 **[references/connections.md](references/connections.md)**.
 
-- **GitHub first** — it's required for deploy monitoring *and* discovery. Use `onboard_github` (or `create` on
-  `connections`); the OAuth flow opens a browser.
-- **Proactively connect** what you detected: databases (Postgres/MySQL/ClickHouse/Trino/Elasticsearch),
-  cloud (AWS/GCP), observability backends (Datadog/PromQL), Vercel/Cloudflare.
-- **Ask once about the rest:** "Which do you use? Slack, Linear, PagerDuty, incident.io" — then connect them
-  (`onboard_slack`, `onboard_linear`, or `create` on `connections`).
-- **Private databases** need a NetworkTransport (Tailscale) — see the reference.
+- **A client agent creates most connections directly** — `schema` (collection `connections`), then `create`
+  with the `connection_type` and its config (DSN, API key, region…). Only GitHub/Slack/Linear differ: they use
+  the OAuth tools `onboard_github` / `onboard_slack` / `onboard_linear`.
+- **GitHub first** — required for deploy monitoring *and* discovery.
+- **Proactively connect pull-based sources** you detected: databases (Postgres/MySQL/ClickHouse), observability
+  backends (Datadog/PromQL/GCP Monitoring), cloud (AWS/GCP). Once connected, agents query them through the
+  `query` tool — see the `firetiger-query` "Querying connected sources" reference.
+- **Action integrations:** ask once — "Which do you use? Slack, Linear, PagerDuty, incident.io" — then connect.
+- **Any vendor without a dedicated connector** (e.g. Axiom): use a generic `OPENAPI`/`HTTP` connection with a
+  bearer token. **Private** databases need a NetworkTransport (Tailscale). Both in the reference.
 - **Warn about gaps.** No integrations → the agent can monitor and analyze but can't act (Slack alerts, GitHub
   issues). Note specifics: no Slack → no alerts; no GitHub → no codebase search, no deploy tracking, no discovery.
 
@@ -129,13 +133,14 @@ registered, the agent created and its focus, discovered services/providers, and 
 
 | # | Mistake | Fix |
 |---|---------|-----|
-| 1 | **Only considering the OTLP SDK** | Datadog Agent, Prometheus `remote_write`, Vector, platform drains, and `/datapoints/` are all first-class — match the source you actually have. |
-| 2 | **Skipping GitHub** | GitHub is required for deploy monitoring and to unlock discovery — connect it early. |
-| 3 | **Bearer auth on ingest/drains** | Everything ingest-side is HTTP Basic auth (`base64(user:pass)`). |
-| 4 | **Creating the agent before connecting integrations** | Connect first, or the agent can't act (alerts, issues). |
-| 5 | **Hand-hardcoding auth for query connections** | Connection credentials are proxy-injected by host — reference the connection, don't set `Authorization` yourself. |
-| 6 | **Expecting discovery with only telemetry** | Discovery needs the qualifying pair: GitHub + a telemetry/query source. |
-| 7 | **Committing credentials** | Add credential/env files to `.gitignore`; use platform secret stores in CI. |
+| 1 | **Assuming setup means ingesting telemetry** | Many customers connect *existing* systems (Datadog, Prometheus, GCP metrics, databases) as **pull-based** connections and never ingest — Firetiger queries into them. Offer this path, not just ingestion. |
+| 2 | **Only considering the OTLP SDK** | Datadog Agent, Prometheus `remote_write`, Vector, platform drains, and `/datapoints/` are all first-class — match the source you actually have. |
+| 3 | **Skipping GitHub** | GitHub is required for deploy monitoring and to unlock discovery — connect it early. |
+| 4 | **Bearer auth on ingest/drains** | Everything ingest-side is HTTP Basic auth (`base64(user:pass)`). |
+| 5 | **Creating the agent before connecting integrations** | Connect first, or the agent can't act (alerts, issues). |
+| 6 | **Hand-hardcoding auth for query connections** | Connection credentials are proxy-injected by host — reference the connection, don't set `Authorization` yourself. |
+| 7 | **Expecting discovery with only telemetry** | Discovery needs the qualifying pair: GitHub + a telemetry/query source. |
+| 8 | **Committing credentials** | Add credential/env files to `.gitignore`; use platform secret stores in CI. |
 
 ## Related
 
