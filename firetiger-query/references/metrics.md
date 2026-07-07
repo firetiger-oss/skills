@@ -121,3 +121,9 @@ LIMIT 100;
 - Attributes follow the same depth-2 inference rule as traces/logs — see [schema.md](schema.md).
 - Add a `LIMIT` to bound results (no fixed cap is enforced, but every row is returned as JSON).
 - A legacy `"opentelemetry/metrics/metadata"` table may exist in older deployments — prefer `"opentelemetry/metrics"`.
+
+## Where to go next
+
+- **Trace & log columns** and the attribute inference rules: [schema.md](schema.md).
+- **Copy-paste trace/log queries** to pair with these metrics: [query-examples.md](query-examples.md).
+- **Prometheus / GCP Monitoring metrics** from a connected source (PromQL functions): [querying-connections.md](querying-connections.md).

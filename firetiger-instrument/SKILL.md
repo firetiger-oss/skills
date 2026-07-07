@@ -92,3 +92,11 @@ Add credential files to `.gitignore` (`.env.local`, `.env.*.local`). Never commi
 | 6 | **Committing `.env.local`** | Add credential files to `.gitignore`. |
 | 7 | **Service name mismatch** | The `OTEL_SERVICE_NAME` you set is the `{service_name}` in the query table `"opentelemetry/traces/{service_name}"`. |
 | 8 | **No graceful shutdown** | Call `sdk.shutdown()` on `SIGTERM` so buffered spans flush before exit. |
+
+## Related
+
+- **Verify the data landed and start querying it:** `firetiger-query` (`SHOW TABLES;`, then the per-service tables this instrumentation creates).
+- **Add business-critical spans, log/trace correlation, and attribute hygiene:** [references/custom-spans.md](references/custom-spans.md).
+- **Full onboarding beyond instrumentation** (connect integrations, register deploys, create a monitoring agent): `firetiger-setup`.
+- **Not writing app code?** If you only have platform logs/traces (Vercel, AWS, GCP, Cloudflare) or a Datadog Agent, wire a drain via `firetiger-setup` instead of an SDK.
+- **Once your change ships:** have Firetiger watch the deploy with `firetiger-monitor-deploy`.

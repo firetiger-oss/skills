@@ -85,3 +85,10 @@ FROM "opentelemetry/traces/api"
 WHERE start_time >= NOW() - INTERVAL '1 hour'
 LIMIT 100;
 ```
+
+## Where to go next
+
+- **Ready-to-run queries** using these columns — recent/slow/error spans, latency percentiles, error logs: [query-examples.md](query-examples.md).
+- **Metrics tables** (catalog + per-metric value columns), which follow the same depth-2 attribute rule: [metrics.md](metrics.md).
+- **Querying connected sources** (Postgres/MySQL/ClickHouse, Datadog/Prometheus/GCP) and cross-source joins: [querying-connections.md](querying-connections.md).
+- **No rows coming back?** Confirm the service is instrumented and exporting with `firetiger-instrument`.

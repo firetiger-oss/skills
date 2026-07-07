@@ -46,3 +46,9 @@ Firetiger accepts GCP logs two ways:
 
 Choose HTTP push for the simplest setup; use the Pub/Sub path when you want buffering/replay in front of
 Firetiger. For app traces/metrics, add the OTLP SDK (`firetiger-instrument`).
+
+## Next steps
+
+- **Verify** — after some traffic, run `SHOW TABLES;` with `firetiger-query` (data can lag a few minutes right after setup).
+- **Query GCP without ingesting** — GCP is also a **pull-based** connection (Cloud Monitoring metrics via PromQL) you query in place; see [connections.md](connections.md).
+- **Other sources** — back to [ingest-sources.md](ingest-sources.md) for the full drain menu.

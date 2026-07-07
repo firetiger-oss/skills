@@ -89,3 +89,10 @@ LIMIT 100;
 
 To follow a trace across *multiple* services, run this against each service table for the same `trace_id`
 (discover the tables with `SHOW TABLES;`).
+
+## Where to go next
+
+- **Column reference** for any field used above (traces, logs, nested attributes): [schema.md](schema.md).
+- **Metric queries** (gauge/sum/histogram value columns): [metrics.md](metrics.md).
+- **Join these tables to a connected database or Datadog/Prometheus**: [querying-connections.md](querying-connections.md).
+- **Chasing an incident?** `firetiger-investigate` wraps these same queries in a tracked, agent-driven workflow.

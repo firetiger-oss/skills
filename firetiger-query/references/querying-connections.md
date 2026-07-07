@@ -118,3 +118,8 @@ SELECT * FROM confit_examples();     -- worked examples
 | **Telemetry lags ~5 min** | For fresher-than-5-minute data, query the source connection directly instead of Firetiger's lake. |
 | **Trino / Elasticsearch** | Not reachable via the `query` tool — no federation path. Use the dashboard or a generic HTTP connection. |
 | **`LIMIT` still applies** | Add a `LIMIT` to every SELECT, federated or not. |
+
+## Where to go next
+
+- **No connection to query yet?** Create one — per-type config (DSN, API key, region) and the connect model are in the `firetiger-setup` skill's "Connections" reference.
+- **Querying Firetiger's own telemetry** (traces/logs/metrics tables): [schema.md](schema.md), [query-examples.md](query-examples.md), [metrics.md](metrics.md).

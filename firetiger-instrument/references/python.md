@@ -46,3 +46,9 @@ trace.set_tracer_provider(provider)
 ```
 
 Call this at the very top of your entrypoint, before importing instrumented libraries.
+
+## Next steps
+
+- **Verify** — generate traffic, then query `"opentelemetry/traces/your-service-name"` with `firetiger-query` (`SHOW TABLES;` first).
+- **Custom spans & log correlation** — instrument business-critical operations and join logs to traces in [custom-spans.md](custom-spans.md).
+- **Full onboarding** — connect integrations and create a monitoring agent with `firetiger-setup`.

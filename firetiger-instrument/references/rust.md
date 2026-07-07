@@ -45,3 +45,9 @@ fn init_tracing() -> Result<(), Box<dyn std::error::Error>> {
 Call `init_tracing()` early in `main` (inside the Tokio runtime). Instrument functions with
 `#[tracing::instrument]` or emit spans with `tracing::span!` — they flow through the OpenTelemetry layer to
 Firetiger.
+
+## Next steps
+
+- **Verify** — generate traffic, then query `"opentelemetry/traces/your-service-name"` with `firetiger-query` (`SHOW TABLES;` first).
+- **Custom spans & log correlation** — the [custom-spans.md](custom-spans.md) patterns (Node/Python shown) map directly onto `tracing` spans and fields.
+- **Full onboarding** — connect integrations and create a monitoring agent with `firetiger-setup`.

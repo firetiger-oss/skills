@@ -48,3 +48,10 @@ Basic auth header. For SDK setup per language, use the **`firetiger-instrument`*
 
 After wiring a source, verify data is arriving with `firetiger-query` (`SHOW TABLES;`). Data can lag a few
 minutes right after setup — absence immediately after isn't a failure.
+
+## Where to go next
+
+- **Don't want to ship telemetry at all?** Many sources (Datadog, Prometheus, GCP metrics, databases) can be
+  **pull-based** connections Firetiger queries *into* instead — see [connections.md](connections.md).
+- **Instrumenting your own code** for OTLP: the `firetiger-instrument` skill (per-language SDK setup).
+- **Querying what landed**, including joins across connected sources: the `firetiger-query` skill.

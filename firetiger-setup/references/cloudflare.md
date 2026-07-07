@@ -56,3 +56,9 @@ accepts Logpush three ways:
 - **Via GCS** → `/cloudflare/logpush/gcs` (GCS + Pub/Sub notifications).
 
 Use direct HTTP for the simplest path; use the S3/GCS variants when you already push Logpush to object storage.
+
+## Next steps
+
+- **Verify** — after some traffic, run `SHOW TABLES;` with `firetiger-query` (data can lag a few minutes right after setup).
+- **App-level traces** — Workers observability captures request logs/traces; for spans from your own code add the OTLP SDK via `firetiger-instrument`.
+- **Other sources & integrations** — back to [ingest-sources.md](ingest-sources.md) for more drains, or [connections.md](connections.md) to connect GitHub/Slack and pull-based sources.
