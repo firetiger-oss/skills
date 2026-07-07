@@ -107,3 +107,8 @@ structlog.configure(processors=[add_trace_context, structlog.processors.JSONRend
 - Enable `gzip` compression on exporters.
 - Size batches to your traffic; set queue limits to bound memory.
 - Add manual spans for checkout/payment and anything measured for SLOs.
+
+## Where to go next
+
+- **Query your custom spans and correlated logs** — the attributes you set become columns; see the `firetiger-query` skill (and its schema reference for the depth-2 inference rule).
+- **Investigate with them** — once you have rich spans, `firetiger-investigate` can reason over them to diagnose incidents.

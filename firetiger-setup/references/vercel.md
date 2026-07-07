@@ -43,3 +43,9 @@ curl -X POST "https://api.vercel.com/v1/drains" \
 
 The logs drain targets production `lambda` and `edge` sources; adjust the `filter` block to include other
 environments or sources as needed.
+
+## Next steps
+
+- **Verify** — after some traffic, run `SHOW TABLES;` with `firetiger-query` (data can lag a few minutes right after setup).
+- **App-level traces** — drains capture platform logs/traces; for spans from your own code add the OTLP SDK via `firetiger-instrument`.
+- **Other sources & integrations** — back to [ingest-sources.md](ingest-sources.md) for more drains, or [connections.md](connections.md) to connect GitHub/Slack and pull-based sources.

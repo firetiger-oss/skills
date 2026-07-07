@@ -65,3 +65,9 @@ Environment:
 export OTEL_EXPORTER_OTLP_ENDPOINT="ingest.cloud.firetiger.com:443"
 export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic <base64(username:password)>"
 ```
+
+## Next steps
+
+- **Verify** — generate traffic, then query `"opentelemetry/traces/your-service-name"` with `firetiger-query` (`SHOW TABLES;` first).
+- **Custom spans & log correlation** — instrument business-critical operations and join logs to traces in [custom-spans.md](custom-spans.md).
+- **Full onboarding** — connect integrations and create a monitoring agent with `firetiger-setup`.

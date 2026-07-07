@@ -47,3 +47,9 @@ auth mode):
 Point a Firehose delivery stream (HTTP endpoint destination) or EventBridge API destination at the relevant
 path with the Basic auth header. For richer app telemetry, prefer the OTLP SDK (`firetiger-instrument`)
 alongside these infra logs.
+
+## Next steps
+
+- **Verify** — after some traffic, run `SHOW TABLES;` with `firetiger-query` (data can lag a few minutes right after setup).
+- **Query AWS without ingesting** — AWS is also a **pull-based** connection (CloudWatch metrics, cost data) you query in place; see [connections.md](connections.md).
+- **Other sources** — back to [ingest-sources.md](ingest-sources.md) for the full drain menu.
