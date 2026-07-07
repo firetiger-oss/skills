@@ -31,8 +31,8 @@ header for a connected service, and never query with an embedded password.
 ## Pull-based data sources
 
 Once connected, these are queried through the `query` tool — see the `firetiger-query` skill's
-"Querying connected sources" reference for the exact SQL (SQL databases via `USE "connections/{name}"`,
-Datadog/Prometheus/GCP via vendor functions, cross-source joins).
+"Querying connected sources" reference for the exact SQL (SQL databases via fully-qualified
+`"connections/{name}".schema.table`, Datadog/Prometheus/GCP via vendor functions, cross-source joins).
 
 | Type | Config (via `create` on `connections`) | Auth |
 |------|------------------------------------------|------|

@@ -8,7 +8,8 @@ description: >
   Firetiger MCP `query` tool. Always use this skill before writing a Firetiger query
   — it carries the critical gotchas (slashed table names must be quoted, duration is
   computed not stored, status codes are integers, attributes are structs not maps,
-  USE "connections/{name}" to reach a connected source) that make queries succeed.
+  fully-qualify "connections/{name}".table to reach a connected source) that make
+  queries succeed.
 license: Apache-2.0
 user_invocable: true
 user_invocable_description: "Query traces, logs, and metrics with SQL"
@@ -83,13 +84,15 @@ Metrics use a per-metric table with values inline — there is **no** `series` j
 ## Querying connected sources
 
 The same `query` tool can also reach sources you've **connected** to Firetiger — and join across them in one
-query. Firetiger's own telemetry is the default; other sources are addressed two ways:
+query. Firetiger's own telemetry is the default source; other sources are addressed two ways:
 
-- **SQL sources** (Postgres, MySQL, ClickHouse) — prepend `USE "connections/{name}";` (quoted — the name has a
-  slash) to make that connection the default for the query:
+- **SQL sources** (Postgres, MySQL, ClickHouse) — **fully-qualify the table** with the connection name.
+  `"connections/{name}"` is a quoted identifier (it contains a `/`), followed by schema/database and table:
   ```sql
-  USE "connections/prod-postgres"; SELECT id, email FROM public.users WHERE created_at >= NOW() - INTERVAL '1 day' LIMIT 100;
+  SELECT id, email FROM "connections/prod-postgres".public.users WHERE created_at >= NOW() - INTERVAL '1 day' LIMIT 100;
   ```
+  Prefer this to `USE` — it's self-contained and lets one query join across connections. (`USE
+  "connections/{name}";` is an optional shorthand that sets the default for *unqualified* names.)
 - **Observability backends** (Datadog, Prometheus, GCP Monitoring) — call a **function** with the connection
   name as a string argument and the vendor's own query language:
   ```sql
@@ -108,7 +111,7 @@ reachable through the `query` tool.)
 | **Full column reference** for traces, logs, and deeply-nested attributes | [references/schema.md](references/schema.md) |
 | **Ready-to-run queries** — recent/slow/error spans, latency percentiles, error logs, cross-service traces | [references/query-examples.md](references/query-examples.md) |
 | **Metrics** — the metadata catalog, per-metric data tables, gauge/sum/histogram value columns | [references/metrics.md](references/metrics.md) |
-| **Querying connected sources** — Postgres/MySQL/ClickHouse via `USE`, Datadog/Prometheus/GCP via functions, cross-source joins | [references/querying-connections.md](references/querying-connections.md) |
+| **Querying connected sources** — Postgres/MySQL/ClickHouse via fully-qualified `"connections/{name}".table`, Datadog/Prometheus/GCP via functions, cross-source joins | [references/querying-connections.md](references/querying-connections.md) |
 
 ## Common Mistakes
 
@@ -123,7 +126,7 @@ reachable through the `query` tool.)
 | 7 | **Guessing service/table names** | Run `SHOW TABLES;` and `DESCRIBE "table"` first — schemas are inferred and vary per service. |
 | 8 | **Map syntax on attributes** | Attributes are structs — `attributes.http.route`, not `attributes['http.route']`. |
 | 9 | **Reading a level-3+ attribute directly** | Beyond nesting depth 2 it's a JSON-typed column — `json_extract_string(attributes.request.context, '$.key')`. |
-| 10 | **Wrong connection-name form when federating** | `USE "connections/pg"` is a **quoted identifier**; `datadog_search_logs('connections/pg', …)` takes it as a **string literal**. Don't swap them. |
+| 10 | **Wrong connection-name form when federating** | In `FROM`, `"connections/pg".schema.table` — a **quoted identifier**; in a vendor function, `datadog_search_logs('connections/pg', …)` — a **string literal**. Don't swap them. |
 
 ## Related
 

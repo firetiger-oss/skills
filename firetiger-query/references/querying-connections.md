@@ -10,25 +10,38 @@ to see them. Each is addressed by its **full resource name**, `connections/{name
 
 ## Two addressing patterns
 
-### 1. SQL sources → `USE "connections/{name}"`
+### 1. SQL sources → fully-qualify the table
 
-Firetiger's own telemetry lake (`connections/iceberg-gateway`) is the **default** — it's auto-selected, so
-plain telemetry queries need no `USE`. To query a *different* connected SQL source instead, make it the default
-for that query with a leading `USE`. The name contains a `/`, so it's a **quoted identifier**:
+Firetiger's own telemetry lake, **`connections/iceberg-gateway`**, is the **default** connection: the `query`
+tool auto-selects it (it prepends `USE "connections/iceberg-gateway";` when your SQL has no leading `USE`), so
+plain telemetry queries just name the table — `FROM "opentelemetry/traces/checkout-service"` is implicitly
+`FROM "connections/iceberg-gateway"."opentelemetry/traces/checkout-service"`. To query a *different* connected
+SQL source, **fully-qualify the table with the connection name** — `"connections/{name}"` is the leading
+identifier (quoted, because it contains a `/`), followed by the schema/database and table:
 
 ```sql
-USE "connections/prod-postgres";
+-- Postgres / MySQL:  "connections/{name}".<schema>.<table>
 SELECT id, email, created_at
-FROM public.users
+FROM "connections/prod-postgres".public.users
 WHERE created_at >= NOW() - INTERVAL '1 day'
 ORDER BY created_at DESC
 LIMIT 100;
+
+-- ClickHouse:  "connections/{name}".<database>.<table>
+SELECT event_type, count(*) FROM "connections/prod-clickhouse".default.events
+WHERE timestamp >= NOW() - INTERVAL '1 hour'
+GROUP BY event_type LIMIT 100;
 ```
 
-Writing your own `USE` also suppresses the automatic iceberg-gateway default. Connected **Postgres, MySQL, and
-ClickHouse** are reachable this way (the engine federates them in server-side; your SQL never contains their
-credentials). Connected **Trino** and **Elasticsearch** are *not* reachable through the `query` tool — query
-those from the Firetiger dashboard, or via a generic HTTP connection.
+Prefer this fully-qualified form: each query is self-contained (no hidden default state), and it lets you
+**join across connections in one query**. The engine federates the source in server-side, so your SQL never
+contains its credentials. Connected **Postgres, MySQL, and ClickHouse** are reachable this way; connected
+**Trino** and **Elasticsearch** are *not* reachable through the `query` tool — query those from the Firetiger
+dashboard or via a generic HTTP connection.
+
+> **`USE` is optional.** `USE "connections/{name}";` at the start of a statement just sets the default
+> connection for *unqualified* table names — handy when a whole query targets one source. It's not required,
+> and fully-qualifying is clearer for one-offs and mandatory when a single query spans two connections.
 
 ### 2. Observability backends → vendor functions
 
@@ -96,7 +109,8 @@ SELECT * FROM confit_examples();     -- worked examples
 
 | Gotcha | Detail |
 |--------|--------|
-| **Connection name quoting differs by pattern** | `USE "connections/pg"` is a **quoted identifier**; `datadog_search_logs('connections/pg', …)` is a **string literal argument**. Don't swap them. |
+| **Connection name form differs by pattern** | In `FROM`, `"connections/pg".schema.table` — the connection is a **quoted identifier**. In a vendor function, `datadog_search_logs('connections/pg', …)` — it's a **string literal argument**. Don't swap them. |
+| **ClickHouse needs database + table** | `"connections/ch".<db>.<table>` — both parts after the connection are required. |
 | **Time arguments** | Pass `TIMESTAMPTZ` literals or `NOW() - INTERVAL 'N unit'` — never bare unix timestamps. |
 | **`max_rows` only on search/list functions** | Adding `max_rows` to a point-query function (e.g. `promql_query`) is a signature error. |
 | **No `SELECT *` on `promql_query_range`** | Its `labels` MAP inflates output — select `timestamp, value`. |
