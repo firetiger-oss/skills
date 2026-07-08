@@ -119,20 +119,10 @@ frontmatter_value() {
   ' "$1"
 }
 
-# Bump the minor version (X.Y.Z -> X.(Y+1).0) in a plugin manifest.
-bump_plugin_version() {
-  local f="$1" cur major minor new tmp
-  [ -f "$f" ] || { echo "  ! no manifest at $f — skipping version bump" >&2; return 0; }
-  cur="$(grep -oE '"version"[[:space:]]*:[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+"' "$f" \
-         | head -n1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)"
-  [ -n "$cur" ] || { echo "  ! no semver version in $f — skipping bump" >&2; return 0; }
-  major="${cur%%.*}"
-  minor="$(echo "$cur" | cut -d. -f2)"
-  new="${major}.$((minor + 1)).0"
-  tmp="$(mktemp)"
-  sed -E "s/(\"version\"[[:space:]]*:[[:space:]]*\")${cur//./\\.}(\")/\1${new}\2/" "$f" >"$tmp" && mv "$tmp" "$f"
-  echo "  ~ ${f##*/} version ${cur} -> ${new}"
-}
+# NB: the sync deliberately never edits a plugin's version field. Plugin
+# versions are owned by each plugin's maintainers, who bump them manually when
+# merging a sync PR (cursor: plugin.json AND marketplace.json; claude:
+# plugin.json). See DISTRIBUTION.md "Versioning".
 
 # Generate the README skills table from the canonical skills.
 build_skills_table() {
@@ -197,8 +187,8 @@ if [ "$MIGRATE" -eq 1 ] && [ -d "$TARGET/commands" ]; then
   echo "  migrate: retiring command-based layout (skills-only)"
   rm -rf "$TARGET/commands"
   echo "  - commands/ (deleted)"
-  bump_plugin_version "$TARGET/.claude-plugin/plugin.json"
   rewrite_readme "$TARGET/README.md"
+  echo "  note: bump the plugin version manually when merging (sync leaves it alone)"
 fi
 
 # NB: the drift-check workflow is NOT installed here. Writing under

@@ -80,13 +80,28 @@ claude-plugin). On the **first** sync — detected by the presence of a
 `commands/` directory — it additionally:
 
 - deletes `commands/` (skills-only; no command wrappers),
-- bumps the minor version in `.claude-plugin/plugin.json` (e.g. `0.1.0` → `0.2.0`),
 - rewrites the README's *Repository Layout* bullet and *Skills* table for the
   skills-only layout.
 
 Once `commands/` is gone, these steps are skipped — later syncs only refresh
-`skills/`, so the version and README aren't touched again. Claude Code needs no
-`skills` field in `plugin.json`; it auto-discovers `skills/<skill>/SKILL.md`.
+`skills/`, so the README isn't touched again. Claude Code needs no `skills` field
+in `plugin.json`; it auto-discovers `skills/<skill>/SKILL.md`. The version is
+**not** bumped by the sync — see [Versioning](#versioning).
+
+## Versioning
+
+**The sync never edits a plugin's version field.** Plugin versions belong to each
+plugin's maintainers; bump them **manually** when you merge a sync PR:
+
+- **cursor-plugin** — bump **both** `.cursor-plugin/plugin.json` *and*
+  `.cursor-plugin/marketplace.json` (keep them equal; the marketplace reads the
+  latter).
+- **claude-plugin** — bump `.claude-plugin/plugin.json`.
+
+Each sync PR body carries a reminder to do this. Versioning is decoupled from the
+skills tag on purpose: the plugins keep their own semver line, and the source tag
+that a copy was vendored from is recorded separately in
+`skills/.firetiger-skills-source`.
 
 ## Running it locally
 

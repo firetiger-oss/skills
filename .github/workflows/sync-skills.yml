@@ -141,6 +141,10 @@ jobs:
             not edit `skills/` in this repo. To update, merge this PR.
 
             The vendored copy is stamped in `skills/.firetiger-skills-source` and
-            guarded by the `firetiger-skills-drift` workflow (installed by this
-            sync), which fails CI if the vendored skills are edited downstream.
+            guarded by the `firetiger-skills-drift` workflow, which fails CI if
+            the vendored skills are edited downstream.
+
+            ⚠️ **Bump this plugin's version before/when merging** — the sync does
+            not touch version fields. cursor-plugin: `plugin.json` **and**
+            `marketplace.json`; claude-plugin: `plugin.json`.
           delete-branch: false
