@@ -14,14 +14,16 @@ edit it in this repo, tag, and let CI open the update PRs.
 
 ## Who consumes what
 
+Both consumers are **skills-only** and use the identical `skills/` layout, so the
+sync is the same for both — no per-host transform.
+
 | Consumer | Layout produced by the sync |
 |----------|------------------------------|
 | [`cursor-plugin`](https://github.com/firetiger-oss/cursor-plugin) | `skills/<skill>/…` verbatim (its `.cursor-plugin/plugin.json` declares `"skills": "skills"`). |
-| [`claude-plugin`](https://github.com/firetiger-oss/claude-plugin) | `skills/<skill>/…` verbatim **plus** thin `commands/<name>.md` slash-command wrappers that just invoke the matching skill. |
+| [`claude-plugin`](https://github.com/firetiger-oss/claude-plugin) | `skills/<skill>/…` verbatim (Claude Code auto-discovers a plugin's `skills/` directory). |
 
-The command name for a skill drops the leading `firetiger-` (e.g.
-`firetiger-query` → `/query`); the router skill `firetiger` keeps its name.
-The command bodies are stubs — the real content lives only in `skills/`.
+There are **no command wrappers**. `claude-plugin` previously shipped
+`commands/*.md`; that layout is retired — see [claude-plugin migration](#claude-plugin-migration-one-time).
 
 > The website's `.well-known/agent-skills` index and **skills.sh** read *this*
 > repo directly (`npx skills add firetiger-oss/skills`) and need **no** sync.
@@ -32,10 +34,11 @@ The command bodies are stubs — the real content lives only in `skills/`.
   init submodules, so the skill files must be physically present. The sync
   copies them in.
 - **`scripts/sync-skills.sh`** copies the canonical skill folders (every
-  top-level dir with a `SKILL.md`) into a target checkout, applies the per-host
-  transform, installs a drift-check workflow, and writes a stamp
-  (`skills/.firetiger-skills-source`) recording the source repo, tag, and a
-  content hash.
+  top-level dir with a `SKILL.md`) into a target checkout's `skills/`, installs a
+  drift-check workflow, and writes a stamp (`skills/.firetiger-skills-source`)
+  recording the source repo, tag, and a content hash. It is identical for both
+  consumers; the only extra is claude-plugin's one-time `--migrate-skills-only`
+  step (below).
 - **`.github/workflows/sync-skills.yml`** runs the script for each consumer on a
   version-tag push and opens/updates a PR via
   [`peter-evans/create-pull-request`](https://github.com/peter-evans/create-pull-request).
@@ -69,6 +72,22 @@ workflow still runs but stays dry (diff only) and skips PR creation.
 > sync workflow's commit message and committer are deliberately free of it — keep
 > them that way if you edit the workflow.
 
+## claude-plugin migration (one-time)
+
+`claude-plugin` used to expose skills as `commands/*.md`. The sync retires that
+when called with `--migrate-skills-only` (the workflow passes it for
+claude-plugin). On the **first** sync — detected by the presence of a
+`commands/` directory — it additionally:
+
+- deletes `commands/` (skills-only; no command wrappers),
+- bumps the minor version in `.claude-plugin/plugin.json` (e.g. `0.1.0` → `0.2.0`),
+- rewrites the README's *Repository Layout* bullet and *Skills* table for the
+  skills-only layout.
+
+Once `commands/` is gone, these steps are skipped — later syncs only refresh
+`skills/`, so the version and README aren't touched again. Claude Code needs no
+`skills` field in `plugin.json`; it auto-discovers `skills/<skill>/SKILL.md`.
+
 ## Running it locally
 
 Test against local checkouts of the plugins before tagging:
@@ -82,8 +101,8 @@ make sync-claude  CLAUDE=../claude-plugin
 Or call the script directly:
 
 ```sh
-scripts/sync-skills.sh --host cursor --target ../cursor-plugin --tag v1.2.3
-scripts/sync-skills.sh --host claude --target ../claude-plugin --tag v1.2.3
+scripts/sync-skills.sh --target ../cursor-plugin --tag v1.2.3
+scripts/sync-skills.sh --target ../claude-plugin --tag v1.2.3 --migrate-skills-only
 ```
 
 ## Drift protection

@@ -17,11 +17,11 @@ help: ## Show this help
 
 sync: sync-cursor sync-claude ## Sync skills into both local plugin checkouts
 
-sync-cursor: ## Vendor skills into $(CURSOR) (host: cursor)
-	scripts/sync-skills.sh --host cursor --target "$(CURSOR)" --tag "$(TAG)"
+sync-cursor: ## Vendor skills into $(CURSOR)
+	scripts/sync-skills.sh --target "$(CURSOR)" --tag "$(TAG)"
 
-sync-claude: ## Vendor skills + command stubs into $(CLAUDE) (host: claude)
-	scripts/sync-skills.sh --host claude --target "$(CLAUDE)" --tag "$(TAG)"
+sync-claude: ## Vendor skills into $(CLAUDE) (retires commands/ on first run)
+	scripts/sync-skills.sh --target "$(CLAUDE)" --tag "$(TAG)" --migrate-skills-only
 
 check-drift: check-drift-cursor check-drift-claude ## Drift-check both local plugin checkouts
 
