@@ -10,9 +10,12 @@
 #   cursor-plugin   skills -> <target>/skills/   (.cursor-plugin/plugin.json "skills": "skills")
 #   claude-plugin   skills -> <target>/skills/   (Claude Code auto-discovers skills/)
 #
-# It also installs a drift-check workflow and stamps the vendored copy with the
-# source tag + content hash (skills/.firetiger-skills-source) so a hand-edited
-# vendored copy can't silently diverge from canonical.
+# It stamps the vendored copy with the source tag + content hash
+# (skills/.firetiger-skills-source) so a hand-edited vendored copy can't silently
+# diverge from canonical. The drift-check workflow that enforces this in each
+# consumer is bootstrapped separately (scripts/bootstrap-drift-check.sh), since
+# pushing workflow files needs a `workflow`-scoped token the sync deliberately
+# avoids.
 #
 # --migrate-skills-only performs claude-plugin's ONE-TIME retirement of the old
 # command-based layout: if the target still has a commands/ directory, it is
@@ -198,16 +201,14 @@ if [ "$MIGRATE" -eq 1 ] && [ -d "$TARGET/commands" ]; then
   rewrite_readme "$TARGET/README.md"
 fi
 
-# ---------------------------------------------------------------------------
-# 3. Install the drift-check workflow into the consumer.
-# ---------------------------------------------------------------------------
-WF_OUT="$TARGET/.github/workflows"
-mkdir -p "$WF_OUT"
-cp "$SCRIPT_DIR/templates/consumer-drift-check.yml" "$WF_OUT/firetiger-skills-drift.yml"
-echo "  + .github/workflows/firetiger-skills-drift.yml"
+# NB: the drift-check workflow is NOT installed here. Writing under
+# .github/workflows/ needs a token with `workflow` scope, which the sync token
+# deliberately lacks (contents + pull_requests only). The drift workflow is
+# bootstrapped into each consumer once, out of band — see scripts/bootstrap-drift-check.sh
+# and templates/consumer-drift-check.yml.
 
 # ---------------------------------------------------------------------------
-# 4. Stamp the vendored copy with the source tag + content hash.
+# 3. Stamp the vendored copy with the source tag + content hash.
 # ---------------------------------------------------------------------------
 HASH="$("$SCRIPT_DIR/skills-hash.sh" "$SKILLS_OUT")"
 cat >"$SKILLS_OUT/$STAMP_NAME" <<EOF
