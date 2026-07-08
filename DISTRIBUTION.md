@@ -34,9 +34,9 @@ There are **no command wrappers**. `claude-plugin` previously shipped
   init submodules, so the skill files must be physically present. The sync
   copies them in.
 - **`scripts/sync-skills.sh`** copies the canonical skill folders (every
-  top-level dir with a `SKILL.md`) into a target checkout's `skills/`, installs a
-  drift-check workflow, and writes a stamp (`skills/.firetiger-skills-source`)
-  recording the source repo, tag, and a content hash. It is identical for both
+  top-level dir with a `SKILL.md`) into a target checkout's `skills/` and writes
+  a stamp (`skills/.firetiger-skills-source`) recording the source repo, tag, and
+  a content hash. It is identical for both
   consumers; the only extra is claude-plugin's one-time `--migrate-skills-only`
   step (below).
 - **`.github/workflows/sync-skills.yml`** runs the script for each consumer on a
@@ -135,13 +135,32 @@ sync. Two guards:
   edited the vendored skills downstream). With `--canonical` it also verifies
   the stamp matches canonical@`tag`, catching a forged stamp or a moved tag.
 
-The sync **installs a drift-check workflow into each consumer**
+Each consumer carries a **drift-check workflow**
 (`.github/workflows/firetiger-skills-drift.yml`). On every push/PR touching
 `skills/**` it checks out this repo at the stamped tag and runs `check-drift.sh`,
 failing CI if the vendored skills were hand-edited. So drift can't silently
 reappear.
 
-Check locally:
+### Bootstrapping the drift workflow (one-time, per consumer)
+
+The recurring sync does **not** push this workflow file. Writing under
+`.github/workflows/` needs a token with `workflow` scope, and `SKILLS_SYNC_TOKEN`
+is kept minimal (contents + pull_requests). The drift workflow is static
+infrastructure, so it's installed once, out of band, with a credential that has
+`workflow` scope (a maintainer's `gh`/PAT, or a GitHub App with Workflows: write):
+
+```sh
+scripts/bootstrap-drift-check.sh --target ../cursor-plugin
+# then, in the plugin checkout:
+git checkout -b add-firetiger-skills-drift-check
+git add .github/workflows/firetiger-skills-drift.yml
+git commit -m "ci: add Firetiger skills drift check"
+gh pr create --fill
+```
+
+Do this once per plugin; afterwards the sync only refreshes `skills/`.
+
+Check drift locally without CI:
 
 ```sh
 make check-drift CURSOR=../cursor-plugin CLAUDE=../claude-plugin
