@@ -1,0 +1,43 @@
+# Local driver for the skills → plugins sync. CI does the same via
+# .github/workflows/sync-skills.yml; these targets let you test against local
+# checkouts of the consumer plugins.
+#
+# Override paths/tag as needed:
+#   make sync-cursor CURSOR=../cursor-plugin TAG=v1.2.3
+#   make sync        CURSOR=../cursor-plugin CLAUDE=../claude-plugin
+
+CURSOR ?= ../cursor-plugin
+CLAUDE ?= ../claude-plugin
+TAG    ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+
+.PHONY: help sync sync-cursor sync-claude dry-run dry-run-cursor dry-run-claude check-drift check-drift-cursor check-drift-claude hash
+
+help: ## Show this help
+	@awk 'BEGIN{FS=":.*##"} /^[a-zA-Z_-]+:.*##/{printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+sync: sync-cursor sync-claude ## Sync skills into both local plugin checkouts
+
+sync-cursor: ## Vendor skills into $(CURSOR)
+	scripts/sync-skills.sh --target "$(CURSOR)" --tag "$(TAG)"
+
+sync-claude: ## Vendor skills into $(CLAUDE) (retires commands/ on first run)
+	scripts/sync-skills.sh --target "$(CLAUDE)" --tag "$(TAG)" --migrate-skills-only
+
+dry-run: dry-run-cursor dry-run-claude ## Show the diff both syncs would make (writes nothing)
+
+dry-run-cursor: ## Preview the $(CURSOR) sync (writes nothing)
+	scripts/sync-skills.sh --target "$(CURSOR)" --tag "$(TAG)" --dry-run
+
+dry-run-claude: ## Preview the $(CLAUDE) sync + migration (writes nothing)
+	scripts/sync-skills.sh --target "$(CLAUDE)" --tag "$(TAG)" --migrate-skills-only --dry-run
+
+check-drift: check-drift-cursor check-drift-claude ## Drift-check both local plugin checkouts
+
+check-drift-cursor: ## Fail if $(CURSOR) vendored skills drifted from their stamp
+	scripts/check-drift.sh --target "$(CURSOR)" --canonical .
+
+check-drift-claude: ## Fail if $(CLAUDE) vendored skills drifted from their stamp
+	scripts/check-drift.sh --target "$(CLAUDE)" --canonical .
+
+hash: ## Print the canonical skills content hash
+	scripts/skills-hash.sh .

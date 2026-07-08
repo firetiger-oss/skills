@@ -6,7 +6,9 @@ a `SKILL.md` with YAML frontmatter, and `references/` for progressive disclosure
 
 This repository is the **single canonical source** for "how to use Firetiger" skills; the
 [cursor-plugin](https://github.com/firetiger-oss/cursor-plugin) and
-[claude-plugin](https://github.com/firetiger-oss/claude-plugin) sync their skill content from here.
+[claude-plugin](https://github.com/firetiger-oss/claude-plugin) vendor their skill content from
+here via an automated, version-pinned sync — see [DISTRIBUTION.md](DISTRIBUTION.md). Skills
+are authored **only** here; never edit them in a plugin repo.
 
 Each skill teaches an agent *when* and *how* to accomplish a Firetiger task, referencing the **Firetiger MCP
 server** tools (`https://api.cloud.firetiger.com/mcp/v1`) and the **`@firetiger` GitHub flow** as the
@@ -67,6 +69,13 @@ The first tool call opens a browser to sign in / create a Firetiger account.
 
 Each skill's `SKILL.md` is a concise entry point; longer detail (per-language instrumentation, query schema
 and examples, platform drain recipes) lives in that skill's `references/` directory and is loaded on demand.
+
+## Distribution
+
+Author a skill here → tag a release (`vX.Y.Z`) → CI opens a PR in each plugin repo with the refreshed
+skills → merge to update that plugin. The vendored copies are stamped with the source tag and guarded
+against drift. The website `.well-known/agent-skills` index and skills.sh read this repo directly and
+need no sync. Full flow, local testing, and the one-time token setup: **[DISTRIBUTION.md](DISTRIBUTION.md)**.
 
 ## The Firetiger MCP server
 
