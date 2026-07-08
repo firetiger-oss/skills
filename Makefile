@@ -10,7 +10,7 @@ CURSOR ?= ../cursor-plugin
 CLAUDE ?= ../claude-plugin
 TAG    ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 
-.PHONY: help sync sync-cursor sync-claude check-drift check-drift-cursor check-drift-claude hash
+.PHONY: help sync sync-cursor sync-claude dry-run dry-run-cursor dry-run-claude check-drift check-drift-cursor check-drift-claude hash
 
 help: ## Show this help
 	@awk 'BEGIN{FS=":.*##"} /^[a-zA-Z_-]+:.*##/{printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -22,6 +22,14 @@ sync-cursor: ## Vendor skills into $(CURSOR)
 
 sync-claude: ## Vendor skills into $(CLAUDE) (retires commands/ on first run)
 	scripts/sync-skills.sh --target "$(CLAUDE)" --tag "$(TAG)" --migrate-skills-only
+
+dry-run: dry-run-cursor dry-run-claude ## Show the diff both syncs would make (writes nothing)
+
+dry-run-cursor: ## Preview the $(CURSOR) sync (writes nothing)
+	scripts/sync-skills.sh --target "$(CURSOR)" --tag "$(TAG)" --dry-run
+
+dry-run-claude: ## Preview the $(CLAUDE) sync + migration (writes nothing)
+	scripts/sync-skills.sh --target "$(CLAUDE)" --tag "$(TAG)" --migrate-skills-only --dry-run
 
 check-drift: check-drift-cursor check-drift-claude ## Drift-check both local plugin checkouts
 

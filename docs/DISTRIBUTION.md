@@ -105,6 +105,22 @@ scripts/sync-skills.sh --target ../cursor-plugin --tag v1.2.3
 scripts/sync-skills.sh --target ../claude-plugin --tag v1.2.3 --migrate-skills-only
 ```
 
+### Dry run
+
+Add `--dry-run` (or `-n`) to preview a sync: it mutates a throwaway copy of the
+target and prints the diff, writing **nothing** to the real target.
+
+```sh
+make dry-run       CURSOR=../cursor-plugin CLAUDE=../claude-plugin TAG=v1.2.3
+make dry-run-claude CLAUDE=../claude-plugin       # includes the commands/ retirement
+
+scripts/sync-skills.sh --target ../claude-plugin --tag v1.2.3 --migrate-skills-only --dry-run
+```
+
+The CI workflow has its own dry run: trigger **Sync skills to plugins** →
+*Run workflow* (defaults to `dry_run=true`), which prints the per-consumer diff
+to the job summary without opening PRs.
+
 ## Drift protection
 
 A vendored copy must never diverge from canonical without going through the
