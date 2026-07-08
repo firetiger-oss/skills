@@ -62,17 +62,21 @@ done
 [ -d "$TARGET" ] || die "target is not a directory: $TARGET"
 TARGET="$(cd "$TARGET" && pwd)"
 
-# --dry-run: mutate a throwaway copy of the target and diff it against the
-# original at the end. The real target is never touched.
+# --dry-run: work on throwaway copies and diff them at the end. The real target
+# is never touched. We keep TWO .git-free copies — a pristine "before" (DRY_BASE)
+# and the mutated "after" (DRY_TMP) — so the diff doesn't show .git churn.
 ORIG_TARGET=""
+DRY_BASE=""
 DRY_TMP=""
 if [ "$DRYRUN" -eq 1 ]; then
   ORIG_TARGET="$TARGET"
+  DRY_BASE="$(mktemp -d)"
   DRY_TMP="$(mktemp -d)"
-  cp -R "$ORIG_TARGET/." "$DRY_TMP/"
-  rm -rf "$DRY_TMP/.git"   # not needed for the diff; keep the copy small
+  trap 'rm -rf "$DRY_BASE" "$DRY_TMP"' EXIT
+  cp -R "$ORIG_TARGET/." "$DRY_BASE/"
+  rm -rf "$DRY_BASE/.git"           # exclude VCS metadata from the comparison
+  cp -R "$DRY_BASE/." "$DRY_TMP/"   # the copy the sync will mutate
   TARGET="$DRY_TMP"
-  trap 'rm -rf "$DRY_TMP"' EXIT
   echo "DRY RUN — no changes will be written to $ORIG_TARGET"
 fi
 
@@ -218,13 +222,14 @@ echo "  + skills/$STAMP_NAME (hash=${HASH})"
 if [ "$DRYRUN" -eq 1 ]; then
   echo
   echo "=== DRY RUN: changes that WOULD be applied to ${ORIG_TARGET} ==="
+  # Compare the pristine (before) and mutated (after) .git-free copies.
   # Prefer git for readable, colored output; fall back to plain diff.
   if command -v git >/dev/null 2>&1; then
-    git --no-pager diff --no-index --stat -- "$ORIG_TARGET" "$DRY_TMP" 2>/dev/null || true
+    git --no-pager diff --no-index --stat -- "$DRY_BASE" "$DRY_TMP" 2>/dev/null || true
     echo
-    git --no-pager diff --no-index -- "$ORIG_TARGET" "$DRY_TMP" 2>/dev/null || true
+    git --no-pager diff --no-index -- "$DRY_BASE" "$DRY_TMP" 2>/dev/null || true
   else
-    diff -ruN --exclude=.git "$ORIG_TARGET" "$DRY_TMP" || true
+    diff -ruN "$DRY_BASE" "$DRY_TMP" || true
   fi
   echo "=== end dry run (nothing was written to ${ORIG_TARGET}) ==="
 else
